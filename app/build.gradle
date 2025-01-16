@@ -1,0 +1,209 @@
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        // Adjust Gradle plugin versions if needed
+        classpath 'com.android.tools.build:gradle:8.8.0'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0'
+    }
+
+}
+
+plugins {
+    id 'com.android.application'
+}
+
+
+
+tasks.register("prepareKotlinBuildScriptModel"){}
+
+android {
+    namespace 'com.winlator'
+    // Keep compileSdk from your current config. If you want to match Termux-X11, you could set to 34.
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.winlator"
+        minSdkVersion 26
+        // We’re preserving Winlator’s request to keep targetSdkVersion at 28
+        targetSdkVersion 28
+
+        versionCode 20
+        versionName "7.1.4x-glibc-cmod-v12-alpha"
+
+
+
+
+        // External native build from Winlator
+        externalNativeBuild {
+            cmake {
+                cppFlags ''
+            }
+        }
+
+        // You originally only did arm64-v8a. If you want multi-ABI splits, see below.
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+
+        // Example: if you want to unify C++ build with Termux-X11’s code
+        // CMake version used in Winlator
+    }
+
+
+    // Java versions: Winlator uses Java 17, Termux-X11 used 1.9
+    // Using 17 is typically fine (covers 1.9 features).
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // Keep Winlator’s buildTypes
+    buildTypes {
+        debug {
+            minifyEnabled false
+            // Optional: If you want Termux-X11’s postprocessing or signing:
+            //   postprocessing {
+            //       removeUnusedCode true
+            //       removeUnusedResources true
+            //       obfuscate false
+            //       optimizeCode true
+            //   }
+        }
+        // If you have a release build type, add it here
+    }
+
+    // Some optional signingConfigs if you want them
+    // signingConfigs {
+    //     debug {
+    //         storeFile file('testkey_untrusted.jks')
+    //         keyAlias 'alias'
+    //         storePassword 'xrj45yWGLbsO7W0v'
+    //         keyPassword 'xrj45yWGLbsO7W0v'
+    //     }
+    // }
+
+    ndkVersion '27.0.12077973'  // from your original config
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+        }
+    }
+
+    // If you want to be sure modern JNI packaging is used:
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+
+    // If you want to preserve the Termux-X11 approach to buildFeatures:
+    buildFeatures {
+        aidl true
+        buildConfig true
+    }
+
+    sourceSets {
+        main {
+            java.srcDirs += 'src/main/aidl' // Add AIDL directory to Java sources
+        }
+    }
+}
+
+// generatePrefs step from Termux-X11:
+afterEvaluate {
+    tasks.register("generatePrefs") {
+        // If you don’t have preferences.xml or the same logic, you can remove this entire block
+        def xmlFile = file('src/main/res/xml/preferences_x11.xml')
+        if (!xmlFile.exists()) return // Only run if preferences.xml actually exists
+
+        def xml = groovy.xml.DOMBuilder.parse(xmlFile.newReader())
+        def preferenceNodes = xml.documentElement.getElementsByTagName("*")
+        def preferences = []
+
+        for (int i = 0; i < preferenceNodes.length; i++) {
+            def node = preferenceNodes.item(i)
+            // Example logic from Termux-X11
+            if (node.nodeName == 'EditTextPreference' && node.getAttribute("app:key") != "extra_keys_config") {
+                preferences << [ type: 'String',  key: node.getAttribute("app:key"), default: node.getAttribute("app:defaultValue") ]
+            } else if (node.nodeName == 'SeekBarPreference') {
+                preferences << [ type: 'Int', key: node.getAttribute("app:key"), default: node.getAttribute("app:defaultValue") ]
+            } else if (node.nodeName == 'ListPreference') {
+                def entries = node.getAttribute("app:entries")
+                def values = node.getAttribute("app:entryValues")
+                preferences << [type: 'List', key: node.getAttribute("app:key"), default: node.getAttribute("app:defaultValue"),
+                                entries: entries.substring(7, entries.length()), values: values.substring(7, values.length())]
+            } else if (node.nodeName == 'SwitchPreferenceCompat') {
+                preferences << [ type: 'Boolean',  key: node.getAttribute("app:key"), default: node.getAttribute("app:defaultValue") ]
+            }
+        }
+
+        def out = file('build/generated/java/com/winlator/x11/Prefs.java')
+        out.getParentFile().mkdirs()
+        out.delete()
+        out.createNewFile()
+
+        out << 'package com.winlator.x11;\n'
+        out << 'import java.util.HashMap;\n'
+        out << 'import com.winlator.R;\n'
+        out << 'import android.content.Context;\n'
+        out << 'import com.winlator.x11.utils.TermuxX11ExtraKeys;\n'
+        out << '\n'
+        out << 'public class Prefs extends LoriePreferences.PrefsProto {\n'
+        preferences.each {
+            if (it.type == 'Int' || it.type == 'Boolean')
+                out << "  public final ${it.type}Preference ${it.key} = new ${it.type}Preference(\"${it.key}\", ${it.default});\n"
+            else if (it.type == 'String')
+                out << "  public final StringPreference ${it.key} = new StringPreference(\"${it.key}\", \"${it.default}\");\n"
+            else if (it.type == 'List')
+                out << "  public final ${it.type}Preference ${it.key} = new ${it.type}Preference(\"${it.key}\", \"${it.default}\", R.array.${it.entries}, R.array.${it.values});\n"
+        }
+        out << '  public final StringPreference extra_keys_config = new StringPreference("extra_keys_config", TermuxX11ExtraKeys.DEFAULT_IVALUE_EXTRA_KEYS);\n'
+        out << '  public final HashMap<String, Preference> keys = new HashMap<>() {{\n'
+        preferences.each { out << '    put("' + it.key + '", ' + it.key + ');\n' }
+        out << '  }};\n'
+        out << '\n'
+        out << '  public Prefs(Context ctx) {\n'
+        out << '    super(ctx);\n'
+        out << '  }\n'
+        out << '}\n'
+    }
+    android.sourceSets.main.java.srcDirs += 'build/generated/java'
+    preBuild.dependsOn tasks.named("generatePrefs")
+}
+
+dependencies {
+    // Winlator’s dependencies
+    implementation 'androidx.appcompat:appcompat:1.4.0'
+    implementation 'androidx.preference:preference:1.2.1'
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'com.github.luben:zstd-jni:1.5.2-3@aar'
+    implementation 'org.tukaani:xz:1.7'
+    implementation 'org.apache.commons:commons-compress:1.20'
+    implementation 'androidx.activity:activity-ktx:1.4.0'
+    implementation 'androidx.fragment:fragment-ktx:1.4.0'
+    implementation files('libs/MidiSynth/MidiSynth.jar')
+    implementation 'androidx.recyclerview:recyclerview:1.2.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+    implementation 'com.google.code.gson:gson:2.8.8'
+    implementation 'org.conscrypt:conscrypt-android:2.5.2'
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.68'
+    implementation 'org.openjsse:openjsse:1.1.7'
+    implementation 'androidx.core:core:1.0.1'
+    implementation 'com.github.bumptech.glide:glide:4.11.0'
+    implementation 'com.kohlschutter.junixsocket:junixsocket-common:2.6.0'
+    implementation 'com.kohlschutter.junixsocket:junixsocket-native-common:2.6.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
+
+
+
+}
+
+
+
