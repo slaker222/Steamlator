@@ -6,6 +6,9 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
@@ -13,6 +16,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -28,10 +32,12 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.documentfile.provider.DocumentFile;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -44,13 +50,16 @@ import com.winlator.contentdialog.StorageInfoDialog;
 import com.winlator.core.AppUtils;
 import com.winlator.core.FileUtils;
 import com.winlator.core.PreloaderDialog;
+import com.winlator.x11.X11Activity;
 import com.winlator.xenvironment.ImageFs;
 import com.winlator.TerminalActivity;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -316,14 +325,61 @@ public class ContainersFragment extends Fragment {
             return data.size();
         }
 
+        @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+        private void launchXLorie() {
+            PackageManager pm = getActivity().getPackageManager();
+            PackageInfo info;
+            try {
+                info = pm.getPackageInfo(getActivity().getPackageName(), PackageManager.PackageInfoFlags.of(0));
+            }
+            catch (PackageManager.NameNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+            ProcessBuilder builder = new ProcessBuilder("/system/bin/app_process", "/", "com.winlator.x11.CmdEntryPoint", ":0");
+            builder.redirectErrorStream(true);
+            builder.environment().put("CLASSPATH", info.applicationInfo.sourceDir);
+            builder.environment().put("WINLATOR_X11_DEBUG", "1");
+            Log.i("SourceDir: ", info.applicationInfo.sourceDir);
+            builder.environment().put("TMPDIR", "/data/data/com.winlator/files/imagefs/usr/tmp");
+            builder.environment().put("XKB_CONFIG_ROOT", "/data/data/com.winlator/files/imagefs/usr/share/X11/xkb");
+            Thread t = new Thread(new Runnable(){
+               @Override
+               public void run() {
+                   try {
+                       Process x11Process = builder.start();
+                       Intent x11Lorie = new Intent(getActivity(), X11Activity.class);
+                       getActivity().startActivity(x11Lorie);
+                       BufferedReader br = new BufferedReader(new InputStreamReader(x11Process.getInputStream()));
+                       String line;
+                       while ((line = br.readLine()) != null) {
+                           Log.d("X11Loader", line);
+                       }
+                   }
+                   catch (IOException e) {
+                       throw new RuntimeException(e);
+                   }
+               }
+            });
+            t.start();
+        }
+
         private void runContainer(Container container) {
             final Context context = getContext();
-            if (!XrActivity.isEnabled(getContext())) {
-                Intent intent = new Intent(context, XServerDisplayActivity.class);
-                intent.putExtra("container_id", container.id);
-                context.startActivity(intent);
-            } else {
-                XrActivity.openIntent(getActivity(), container.id, null);
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(context);
+            boolean isX11LorieEnabled = sp.getBoolean("use_lorie", false);
+            if(isX11LorieEnabled) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    launchXLorie();
+                }
+            }
+            else {
+                if (!XrActivity.isEnabled(getContext())) {
+                    Intent intent = new Intent(context, XServerDisplayActivity.class);
+                    intent.putExtra("container_id", container.id);
+                    context.startActivity(intent);
+                } else {
+                    XrActivity.openIntent(getActivity(), container.id, null);
+                }
             }
         }
 
