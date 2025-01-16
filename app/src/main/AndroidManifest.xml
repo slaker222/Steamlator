@@ -157,16 +157,11 @@
         <activity
             android:name=".x11.X11Activity"
             android:taskAffinity=".x11.X11Activity"
-            android:launchMode="singleInstance"
             android:supportsPictureInPicture="true"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:resizeableActivity="true"
             android:windowSoftInputMode="stateHidden"
             android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
             <intent-filter>
                 <category android:name="android.intent.category.SECONDARY_HOME" />
             </intent-filter>
