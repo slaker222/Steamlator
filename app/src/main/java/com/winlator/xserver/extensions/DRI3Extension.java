@@ -1,5 +1,7 @@
 package com.winlator.xserver.extensions;
 
+import android.hardware.HardwareBuffer;
+import android.util.Log;
 import static com.winlator.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
 
 import com.winlator.core.Callback;
@@ -118,7 +120,8 @@ public class DRI3Extension implements Extension {
         int offset = inputStream.readInt();
         inputStream.skip(24);
         byte depth = inputStream.readByte();
-        inputStream.skip(11);
+        inputStream.skip(3);
+        long modifiers = inputStream.readLong();
 
         Window window = client.xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
@@ -128,7 +131,32 @@ public class DRI3Extension implements Extension {
 
         int fd = inputStream.getAncillaryFd();
         long size = (long)stride * height;
-        pixmapFromFd(client, pixmapId, width, height, stride, offset, depth, fd, size);
+        if (modifiers == 1255) {
+            Log.d("Dri3", "AHARDWAREBUFFER_SOCKET_FD");
+            pixmapFromBuffer(client, pixmapId, width, height, stride, offset, depth, fd, size);
+        }
+        
+        else if (modifiers == 1274) {
+            Log.d("Dri3", "RAW_MAPPABLE_FD"); 
+            pixmapFromFd(client, pixmapId, width, height, stride, offset, depth, fd, size);
+        }    
+    }
+    
+    private void pixmapFromBuffer(XClient client, int pixmapId, short width, short height, int stride, int offset, byte depth, int fd, long size) throws IOException, XRequestError {
+        try {
+            long hardwareBufferPtr = hardwareBufferFromSocket(fd);
+            ByteBuffer byteBuffer = hardwareBufferToBuffer(hardwareBufferPtr);
+            if (byteBuffer == null) throw new BadAlloc();
+            short totalWidth = (short)(getHardwareBufferStride(hardwareBufferPtr));
+            Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, totalWidth, (short)getHardwareBufferHeight(hardwareBufferPtr), depth);
+            drawable.setData(byteBuffer);
+            drawable.setTexture(null);
+            drawable.setOnDestroyListener(onDestroyDrawableListener);
+            client.xServer.pixmapManager.createPixmap(drawable);
+        }
+        finally {
+           XConnectorEpoll.closeFd(fd);
+        } 
     }
 
     private void pixmapFromFd(XClient client, int pixmapId, short width, short height, int stride, int offset, byte depth, int fd, long size)  throws IOException, XRequestError {
@@ -174,4 +202,15 @@ public class DRI3Extension implements Extension {
                 throw new BadImplementation();
         }
     }
+    
+    private native long hardwareBufferFromSocket(int fd);
+    private native ByteBuffer hardwareBufferToBuffer(long ptr);
+    private native int getHardwareBufferStride(long ptr);
+    private native int getHardwareBufferHeight(long ptr);
+    private native int getHardwareBufferWidth(long ptr);
+    
+    static {
+        System.loadLibrary("winlator");
+    }
 }
+;
