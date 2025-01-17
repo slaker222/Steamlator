@@ -4,7 +4,7 @@ file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/X11")
 
 add_custom_command(
         OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
-        COMMAND "/usr/bin/gcc" "-o" "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c" "&&"
+        COMMAND "gcc" "-o" "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "${CMAKE_CURRENT_SOURCE_DIR}/libx11/src/util/makekeys.c" "&&"
             "${CMAKE_CURRENT_BINARY_DIR}/makekeys" "keysymdef.h" "XF86keysym.h" "Sunkeysym.h" "DECkeysym.h" "HPkeysym.h" ">" "${CMAKE_CURRENT_BINARY_DIR}/ks_tables.h"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/xorgproto/include/X11"
         COMMENT "Generating source code (ks_tables.h)"

@@ -156,8 +156,8 @@
 
         <!-- X11 Activity (Termux-X11 style) -->
         <activity
-            android:name=".x11.X11Activity"
-            android:taskAffinity=".x11.X11Activity"
+            android:name=".X11Activity"
+            android:taskAffinity=".X11Activity"
             android:supportsPictureInPicture="true"
             android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
             android:resizeableActivity="true"
@@ -171,20 +171,6 @@
                 android:resource="@xml/shortcuts" />
         </activity>
 
-        <activity
-            android:name=".x11.LoriePreferences"
-            android:theme="@style/Theme.AppCompat.DayNight"
-            android:excludeFromRecents="true"
-            android:taskAffinity=".LoriePreferences"
-            android:supportsPictureInPicture="false"
-            android:resizeableActivity="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.APPLICATION_PREFERENCES" />
-                <action android:name="android.intent.action.MAIN" />
-            </intent-filter>
-        </activity>
-
         <meta-data
             android:name="com.samsung.android.multidisplay.keep_process_alive"
             android:value="false"/>
@@ -194,7 +180,7 @@
 
         <!-- Accessibility service for KeyInterceptor -->
         <service
-            android:name=".x11.utils.KeyInterceptor"
+            android:name=".x11utils.KeyInterceptor"
             android:label="Winlator:X11 KeyInterceptor"
             android:exported="true"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">

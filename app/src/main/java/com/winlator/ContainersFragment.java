@@ -50,7 +50,7 @@ import com.winlator.contentdialog.StorageInfoDialog;
 import com.winlator.core.AppUtils;
 import com.winlator.core.FileUtils;
 import com.winlator.core.PreloaderDialog;
-import com.winlator.x11.X11Activity;
+import com.winlator.X11Activity;
 import com.winlator.xenvironment.ImageFs;
 import com.winlator.TerminalActivity;
 
@@ -335,7 +335,7 @@ public class ContainersFragment extends Fragment {
             catch (PackageManager.NameNotFoundException e) {
                 throw new RuntimeException(e);
             }
-            ProcessBuilder builder = new ProcessBuilder("/system/bin/app_process", "/", "com.winlator.x11.CmdEntryPoint", ":0");
+            ProcessBuilder builder = new ProcessBuilder("/system/bin/app_process", "/", "com.winlator.CmdEntryPoint", ":0");
             builder.redirectErrorStream(true);
             builder.environment().put("CLASSPATH", info.applicationInfo.sourceDir);
             builder.environment().put("WINLATOR_X11_DEBUG", "1");

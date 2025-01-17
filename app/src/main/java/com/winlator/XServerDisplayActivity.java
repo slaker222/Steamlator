@@ -106,7 +106,7 @@ import com.winlator.widget.WinetricksFloatingView;
 import com.winlator.widget.XServerView;
 import com.winlator.winhandler.TaskManagerDialog;
 import com.winlator.winhandler.WinHandler;
-import com.winlator.x11.X11Activity;
+import com.winlator.X11Activity;
 import com.winlator.xconnector.UnixSocketConfig;
 import com.winlator.xenvironment.ImageFs;
 import com.winlator.xenvironment.XEnvironment;

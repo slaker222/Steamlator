@@ -18,79 +18,12 @@
         android:paddingBottom="0dp"
         android:background="@android:color/black">
 
-        <com.winlator.x11.LorieView
+        <com.winlator.LorieView
             android:id="@+id/lorieView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="visible"
             android:layout_gravity="center" />
-
-        <LinearLayout
-            android:id="@+id/stub"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@android:color/black"
-            android:gravity="center_horizontal|center_vertical"
-            android:orientation="vertical"
-            android:visibility="visible">
-
-            <ImageView
-                android:id="@+id/x11_image"
-                android:layout_width="130dp"
-                android:layout_height="130dp"
-                android:scaleType="fitCenter"
-                app:srcCompat="@drawable/ic_x11_icon"
-                android:contentDescription="X Logo"
-                tools:ignore="HardcodedText" />
-
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="20dp" />
-
-            <TextView
-                android:id="@+id/textView"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_horizontal|center_vertical"
-                android:text="@string/not_connected"
-                android:textColor="#FFFFFF"
-                android:textSize="20sp" />
-
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="40dp" />
-
-            <Button
-                android:id="@+id/preferences_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/preferences_button_text" />
-
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="10dp" />
-
-            <Button
-                android:id="@+id/help_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/help_button_text" />
-
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:minHeight="10dp" />
-
-            <Button
-                android:id="@+id/exit_button"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/exit_button_text" />
-        </LinearLayout>
-
 
     </FrameLayout>
 
