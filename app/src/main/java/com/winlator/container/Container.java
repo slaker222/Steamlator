@@ -91,9 +91,9 @@ public class Container {
         this.containerManager = containerManager;
     }
 
-    private boolean isBionic = false;
+    private static boolean isBionic = false;
 
-    public boolean isBionic() {
+    public static boolean isBionic() {
         return isBionic;
     }
 

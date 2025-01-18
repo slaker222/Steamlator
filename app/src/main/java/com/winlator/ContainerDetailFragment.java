@@ -349,6 +349,7 @@ public class ContainerDetailFragment extends Fragment {
         loadScreenSizeSpinner(view, isEditMode() ? container.getScreenSize() : Container.DEFAULT_SCREEN_SIZE);
 
         final Spinner sGraphicsDriver = view.findViewById(R.id.SGraphicsDriver);
+        
         final Spinner sDXWrapper = view.findViewById(R.id.SDXWrapper);
 
         final View vDXWrapperConfig = view.findViewById(R.id.BTDXWrapperConfig);
@@ -879,10 +880,16 @@ public class ContainerDetailFragment extends Fragment {
     public static void loadGraphicsDriverSpinner(final Spinner sGraphicsDriver, final Spinner sDXWrapper, String selectedGraphicsDriver, String selectedDXWrapper) {
         final Context context = sGraphicsDriver.getContext();
         final String[] dxwrapperEntries = context.getResources().getStringArray(R.array.dxwrapper_entries);
+        
+        List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
+        if (!Container.isBionic()) {
+            sGraphicsItemsList.remove("Wrapper");
+        }
+        sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
 
         Runnable update = () -> {
             String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
-            boolean addAll = graphicsDriver.equals("turnip");
+            boolean addAll = graphicsDriver.equals("turnip") || graphicsDriver.equals("wrapper");
 
             ArrayList<String> items = new ArrayList<>();
             for (String value : dxwrapperEntries) {
@@ -918,11 +925,12 @@ public class ContainerDetailFragment extends Fragment {
         Runnable update = () -> {
             String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
             boolean isTurnip = graphicsDriver.equals("turnip");
+            boolean isWrapper = graphicsDriver.equals("wrapper");
 
             // Update the DXWrapper spinner
             ArrayList<String> items = new ArrayList<>();
             for (String value : context.getResources().getStringArray(R.array.dxwrapper_entries)) {
-                if (isTurnip || (!value.equals("DXVK") && !value.equals("VKD3D"))) {
+                if (isTurnip || isWrapper || (!value.equals("DXVK") && !value.equals("VKD3D"))) {
                     items.add(value);
                 }
             }
@@ -1247,7 +1255,11 @@ public class ContainerDetailFragment extends Fragment {
     public static void updateGraphicsDriverSpinner(Context context, ContentsManager manager, Spinner spinner) {
         String[] originalItems = context.getResources().getStringArray(R.array.graphics_driver_entries);
         List<String> itemList = new ArrayList<>(Arrays.asList(originalItems));
-
+        
+        if (!Container.isBionic()) {
+            itemList.remove("Wrapper");
+        }
+        
         // Add Turnip graphics driver versions to the list
 //        for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_TURNIP)) {
 //            itemList.add(ContentsManager.getEntryName(profile));
