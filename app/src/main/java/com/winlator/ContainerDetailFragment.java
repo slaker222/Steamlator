@@ -477,6 +477,13 @@ public class ContainerDetailFragment extends Fragment {
             swBionicContainer.setChecked(container.isBionic());
             swBionicContainer.setEnabled(false); // Disable toggle in edit mode
         }
+        
+        if (!swBionicContainer.isChecked()) {
+            // Remove wrapper from graphics driver entries.
+            List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
+            sGraphicsItemsList.remove("Wrapper");
+            sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
+        }
 
         swBionicContainer.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (isChecked) {
@@ -486,12 +493,21 @@ public class ContainerDetailFragment extends Fragment {
 
                 // Disable Box64 preset as well
                 sBox64Preset.setEnabled(false);
+                 
+                // Readd wrapper to graphics driver entries    
+                List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
+                sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));   
             } else {
                 // Enable Wine version
                 sWineVersion.setEnabled(true);
 
                 // Enable Box64 preset
                 sBox64Preset.setEnabled(true);
+                    
+                // Remove wrapper from graphics driver entries    
+                List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
+                sGraphicsItemsList.remove("Wrapper");
+                sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
             }
         });
 
@@ -881,12 +897,6 @@ public class ContainerDetailFragment extends Fragment {
         final Context context = sGraphicsDriver.getContext();
         final String[] dxwrapperEntries = context.getResources().getStringArray(R.array.dxwrapper_entries);
         
-        List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
-        if (!Container.isBionic()) {
-            sGraphicsItemsList.remove("Wrapper");
-        }
-        sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
-
         Runnable update = () -> {
             String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
             boolean addAll = graphicsDriver.equals("turnip") || graphicsDriver.equals("wrapper");
@@ -1255,10 +1265,6 @@ public class ContainerDetailFragment extends Fragment {
     public static void updateGraphicsDriverSpinner(Context context, ContentsManager manager, Spinner spinner) {
         String[] originalItems = context.getResources().getStringArray(R.array.graphics_driver_entries);
         List<String> itemList = new ArrayList<>(Arrays.asList(originalItems));
-        
-        if (!Container.isBionic()) {
-            itemList.remove("Wrapper");
-        }
         
         // Add Turnip graphics driver versions to the list
 //        for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_TURNIP)) {
