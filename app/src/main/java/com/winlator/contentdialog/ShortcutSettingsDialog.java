@@ -13,6 +13,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.Spinner;
@@ -120,6 +121,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
 
         final Spinner sGraphicsDriver = findViewById(R.id.SGraphicsDriver);
+        
         final Spinner sDXWrapper = findViewById(R.id.SDXWrapper);
 
         final Spinner sBox64Version = findViewById(R.id.SBox64Version);
@@ -307,6 +309,16 @@ public class ShortcutSettingsDialog extends ContentDialog {
             });
             popupMenu.show();
         });
+        // Handle bionic and glibc switching logic
+        if (!shortcut.container.isBionic()) {
+           List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
+           sGraphicsItemsList.remove("Wrapper");
+           sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
+        }
+        else {
+            FrameLayout boxFL = findViewById(R.id.box86box64Frame);
+            boxFL.setVisibility(View.GONE);
+        }
 
         setOnConfirmCallback(() -> {
             String name = etName.getText().toString().trim();
