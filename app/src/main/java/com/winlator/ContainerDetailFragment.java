@@ -19,6 +19,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.Spinner;
@@ -478,11 +479,16 @@ public class ContainerDetailFragment extends Fragment {
             swBionicContainer.setEnabled(false); // Disable toggle in edit mode
         }
         
+        FrameLayout boxFL = view.findViewById(R.id.box86box64Frame);
+        
         if (!swBionicContainer.isChecked()) {
             // Remove wrapper from graphics driver entries.
             List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
             sGraphicsItemsList.remove("Wrapper");
             sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
+        }
+        else {
+            boxFL.setVisibility(View.GONE);
         }
 
         swBionicContainer.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -491,9 +497,9 @@ public class ContainerDetailFragment extends Fragment {
                 sWineVersion.setEnabled(false);
                 sWineVersion.setSelection(0);
 
-                // Disable Box64 preset as well
-                sBox64Preset.setEnabled(false);
-                 
+                // Disable Box64 section
+                boxFL.setVisibility(View.GONE);
+                    
                 // Readd wrapper to graphics driver entries    
                 List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
                 sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));   
@@ -501,8 +507,8 @@ public class ContainerDetailFragment extends Fragment {
                 // Enable Wine version
                 sWineVersion.setEnabled(true);
 
-                // Enable Box64 preset
-                sBox64Preset.setEnabled(true);
+                // Enable Box64 section
+                boxFL.setVisibility(View.VISIBLE);
                     
                 // Remove wrapper from graphics driver entries    
                 List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
