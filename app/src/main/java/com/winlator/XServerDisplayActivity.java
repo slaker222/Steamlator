@@ -635,6 +635,20 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         // Check if a profile is defined by the shortcut
         String controlsProfile = shortcut != null ? shortcut.getExtra("controlsProfile", "") : "";
+        
+       if (container != null && container.isBionic()) {
+           switchUsrSymlinkToBionic();
+       } 
+       else {
+           switchUsrSymlinkToGlibc();
+        }
+       
+        if (container.isBionic()) {
+            switchWineSymlinkToBionic(imageFs);
+        } 
+        else {
+            switchWineSymlinkToGlibc(imageFs);
+        }
 
         Runnable runnable = () -> {
             setupUI();
@@ -643,19 +657,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 simulateConfirmInputControlsDialog();
             }
             Executors.newSingleThreadExecutor().execute(() -> {
-
-                if (container != null && container.isBionic()) {
-                    switchUsrSymlinkToBionic();
-                } else {
-                    switchUsrSymlinkToGlibc();
-                }
-
-                if (container.isBionic()) {
-                    switchWineSymlinkToBionic(imageFs);
-                } else {
-                    switchWineSymlinkToGlibc(imageFs);
-                }
-
+                    
                 if (!isGenerateWineprefix()) {
 
                     setupWineSystemFiles();
@@ -684,10 +686,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
             configChangedCallback = runnable;
         } else
-            runnable.run();
-
-
-
+              runnable.run();
     }
 
     private void switchUsrSymlinkToBionic() {
