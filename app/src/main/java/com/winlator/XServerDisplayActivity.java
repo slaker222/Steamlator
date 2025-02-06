@@ -2281,12 +2281,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
 
         if (changed) {
-            FileUtils.delete(new File(imageFs.getLib32Dir(), "libvulkan_freedreno.so"));
-            FileUtils.delete(new File(imageFs.getLib64Dir(), "libvulkan_freedreno.so"));
-            FileUtils.delete(new File(imageFs.getLib32Dir(), "libGL.so.1.7.0"));
-            FileUtils.delete(new File(imageFs.getLib64Dir(), "libGL.so.1.7.0"));
-            FileUtils.delete(new File(imageFs.getLib32Dir(), "libvulkan_wrapper.so"));
-            FileUtils.delete(new File(imageFs.getLib64Dir(), "libvulkan_wrapper.so"));
+            FileUtils.delete(new File(imageFs.getLibDir(), "libvulkan_freedreno.so"));
+            FileUtils.delete(new File(imageFs.getLibDir(), "libGL.so.1.7.0"));
+            FileUtils.delete(new File(imageFs.getLibDir(), "libvulkan_wrapper.so"));
             container.putExtra("graphicsDriver", cacheId);
             container.saveData();
         }
@@ -2465,10 +2462,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void clearOldDriverFiles() {
-        FileUtils.delete(new File(imageFs.getLib32Dir(), "libvulkan_freedreno.so"));
-        FileUtils.delete(new File(imageFs.getLib64Dir(), "libvulkan_freedreno.so"));
-        FileUtils.delete(new File(imageFs.getLib32Dir(), "libGL.so.1.7.0"));
-        FileUtils.delete(new File(imageFs.getLib64Dir(), "libGL.so.1.7.0"));
+        FileUtils.delete(new File(imageFs.getLibDir(), "libvulkan_freedreno.so"));
+        FileUtils.delete(new File(imageFs.getLibDir(), "libGL.so.1.7.0.so"));
+        FileUtils.delete(new File(imageFs.getLibDir(), "libvulkan_wrapper.so"));
     }
 
     private void configureTurnipDriver() {

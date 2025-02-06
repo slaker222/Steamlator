@@ -127,8 +127,8 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         envVars.put("LD_LIBRARY_PATH", "/usr/lib/aarch64-linux-gnu:/usr/lib/arm-linux-gnueabihf");
         envVars.put("ANDROID_SYSVSHM_SERVER", UnixSocketConfig.SYSVSHM_SERVER_PATH);
 
-        if ((new File(imageFs.getLib64Dir(), "libandroid-sysvshm.so")).exists() ||
-            (new File(imageFs.getLib32Dir(), "libandroid-sysvshm.so")).exists()) envVars.put("LD_PRELOAD", "libandroid-sysvshm.so");
+        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()) 
+            envVars.put("LD_PRELOAD", "libandroid-sysvshm.so");
         if (this.envVars != null) envVars.putAll(this.envVars);
 
         boolean bindSHM = envVars.get("WINEESYNC").equals("1");

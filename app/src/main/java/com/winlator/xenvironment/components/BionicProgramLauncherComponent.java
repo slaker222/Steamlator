@@ -193,8 +193,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 rootDir.getPath() + "/usr/bin:" +
                 rootDir.getPath() + "/usr/local/bin");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib");
-
         // **Maybe remove this
         envVars.put("BOX64_LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib/x86_64-linux-gnu");
 
@@ -202,9 +200,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
 
         // Check for specific shared memory libraries
-        if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
-                (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists()) {
-            envVars.put("LD_PRELOAD", "libandroid-sysvshm.so");
+        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()) {
+            envVars.put("LD_PRELOAD", imageFs.getLibDir() + "/libandroid-sysvshm.so");
         }
 
 
@@ -221,8 +218,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (box64File.exists()) {
             FileUtils.chmod(box64File, 0755);
         }
-
-        Log.d("LD_LIBRARY_PATH", envVars.get("LD_LIBRARY_PATH"));
 
         return ProcessHelper.exec(command, envVars.toStringArray(), rootDir, (status) -> {
             synchronized (lock) {
@@ -286,7 +281,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         ImageFs imageFs = environment.getImageFs();
 
         envVars.put("PATH", imageFs.getRootDir().getPath() + "/usr/bin:/usr/local/bin:" + imageFs.getWinePath() + "/bin");
-        envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib");
 
         // Execute the command and capture its output
         try {

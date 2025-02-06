@@ -341,15 +341,13 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
                 rootDir.getPath() + "/usr/bin:" +
                 rootDir.getPath() + "/usr/local/bin");
 
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib");
         envVars.put("BOX64_LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib/x86_64-linux-gnu");
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
 
         // Check for specific shared memory libraries
-        if ((new File(imageFs.getGlibc64Dir(), "libandroid-sysvshm.so")).exists() ||
-                (new File(imageFs.getGlibc32Dir(), "libandroid-sysvshm.so")).exists()) {
-            envVars.put("LD_PRELOAD", "libandroid-sysvshm.so");
+        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()) {
+            envVars.put("LD_PRELOAD", imageFs.getLibDir() + "/libandroid-sysvshm.so");
         }
 
         envVars.put("XAUTHORITY","/data/user/0/com.winlator/files/imagefs/home/xuser/.Xauthority");
@@ -367,8 +365,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         if (box64File.exists()) {
             FileUtils.chmod(box64File, 0755);
         }
-
-        Log.d("LD_LIBRARY_PATH", envVars.get("LD_LIBRARY_PATH"));
 
         return ProcessHelper.exec(command, envVars.toStringArray(), rootDir, (status) -> {
             synchronized (lock) {
@@ -492,7 +488,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         ImageFs imageFs = environment.getImageFs();
 
         envVars.put("PATH", imageFs.getRootDir().getPath() + "/usr/bin:/usr/local/bin:" + imageFs.getWinePath() + "/bin");
-        envVars.put("LD_LIBRARY_PATH", imageFs.getRootDir().getPath() + "/usr/lib");
 
         // Execute the command and capture its output
         try {
@@ -527,7 +522,6 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
         envVars.put("TMPDIR", rootDir.getPath() + "/tmp");
         envVars.put("DISPLAY", ":0");
         envVars.put("PATH", rootDir.getPath() + "/usr/bin:" + rootDir.getPath() + "/usr/local/bin:" + imageFs.getWinePath() + "/bin");
-        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib");
         envVars.put("WINEPREFIX", imageFs.home_path + "/.wine");
         // Include other necessary environment variables
 
