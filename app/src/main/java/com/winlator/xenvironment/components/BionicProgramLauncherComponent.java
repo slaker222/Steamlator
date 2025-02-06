@@ -197,8 +197,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("BOX64_LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib/x86_64-linux-gnu");
 
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
-        envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
-
+        
         // Check for specific shared memory libraries
         if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()) {
             envVars.put("LD_PRELOAD", imageFs.getLibDir() + "/libandroid-sysvshm.so");
@@ -307,7 +306,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     public void startWineServer() {
         if (pid != -1) {
-            Log.d("GlibcProgramLauncherComponent", "wineserver is already running.");
+            Log.d("BionicProgramLauncherComponent", "wineserver is already running.");
             return; // Exit if wineserver is already running
         }
 
@@ -322,25 +321,25 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         // Run wineserver as a persistent process
         pid = ProcessHelper.exec(command, envVars.toStringArray(), environment.getImageFs().getRootDir(), null);
-        Log.d("GlibcProgramLauncherComponent", "Started wineserver with PID: " + pid);
+        Log.d("BionicProgramLauncherComponent", "Started wineserver with PID: " + pid);
     }
 
     public void stopWineServer() {
         if (pid == -1) {
-            Log.d("GlibcProgramLauncherComponent", "wineserver is not running.");
+            Log.d("BionicProgramLauncherComponent", "wineserver is not running.");
             return; // Exit if wineserver is not running
         }
 
         // Kill wineserver process
         Process.killProcess(pid);
         pid = -1; // Reset pid to indicate wineserver has been stopped
-        Log.d("GlibcProgramLauncherComponent", "Stopped wineserver.");
+        Log.d("BionicProgramLauncherComponent", "Stopped wineserver.");
     }
 
     public void restartWineServer() {
         stopWineServer(); // Stop wineserver if running
         startWineServer(); // Start wineserver again
-        Log.d("GlibcProgramLauncherComponent", "wineserver restarted.");
+        Log.d("BionicProgramLauncherComponent", "wineserver restarted.");
     }
 
 
