@@ -2298,7 +2298,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
 
             envVars.put("GALLIUM_DRIVER", "zink");
-            envVars.put("VK_ICD_FILENAMES", "/data/data/com.winlator/files/imagefs/usr/share/vulkan/icd.d/freedreno_icd.aarch64.json");
+            envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/freedreno_icd.aarch64.json");
             envVars.put("TU_OVERRIDE_HEAP_SIZE", "4096");
             if (!envVars.has("MESA_VK_WSI_PRESENT_MODE")) envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox");
             envVars.put("vblank_mode", "0");
@@ -2397,7 +2397,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             } else if (dxwrapper.equals("vkd3d")) {
                 VKD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
             }
-            envVars.put("VK_ICD_FILENAMES", "/data/data/com.winlator/files/imagefs/usr/share/vulkan/icd.d/wrapper_icd.aarch64.json");
+            envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
             envVars.put("GALLIUM_DRIVER", "zink");
             envVars.put("LIBGL_KOPPER_DISABLE", "true");
             if (changed)

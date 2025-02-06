@@ -343,7 +343,7 @@ public class GlibcProgramLauncherComponent extends GuestProgramLauncherComponent
 
         envVars.put("BOX64_LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib/x86_64-linux-gnu");
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
-        envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
+        envVars.put("FONTCONFIG_PATH", imageFs.getEtcDir() + "/fonts");
 
         // Check for specific shared memory libraries
         if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()) {

@@ -98,20 +98,16 @@ public class ImageFs {
         return new File(rootDir, "/usr/tmp");
     }
 
-    public File getGlibc32Dir() {
-        return new File(rootDir, "/usr/lib/arm-linux-gnueabihf");
-    }
-
-    public File getGlibc64Dir() {
+    public File getLibDir() {
         return new File(rootDir, "/usr/lib");
     }
-
-    public File getLib32Dir() {
-        return new File(rootDir, "/usr/lib/arm-linux-gnueabihf");
+    
+    public File getShareDir() {
+        return new File(rootDir, "/usr/share");
     }
-
-    public File getLib64Dir() {
-        return new File(rootDir, "/usr/lib");
+    
+    public File getEtcDir() {
+        return new File(rootDir, "/usr/etc");
     }
 
     @NonNull
