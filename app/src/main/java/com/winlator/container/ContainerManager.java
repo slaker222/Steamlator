@@ -243,47 +243,6 @@ public class ContainerManager {
         }
     }
 
-    public boolean extractContainerPatternFile(String wineVersion, File containerDir, OnExtractFileListener onExtractFileListener) {
-        if (WineInfo.isMainWineVersion(wineVersion)) {
-
-
-            boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, "container_pattern.tzst", containerDir, onExtractFileListener);
-
-            if (result) {
-                try {
-                    JSONObject commonDlls = new JSONObject(FileUtils.readString(context, "common_dlls.json"));
-                    extractCommonDlls("x86_64-windows", "system32", commonDlls, containerDir, onExtractFileListener);
-                    extractCommonDlls("aarch64-windows", "system32", commonDlls, containerDir, onExtractFileListener); // arm64ec only
-                    extractCommonDlls("i386-windows", "syswow64", commonDlls, containerDir, onExtractFileListener);
-                }
-                catch (JSONException e) {
-                    return false;
-                }
-            }
-
-            return result;
-        }
-        else {
-//            File installedWineDir = ImageFs.find(context).getInstalledWineDir();
-//            WineInfo wineInfo = WineInfo.fromIdentifier(context, wineVersion);
-//            String suffix = wineInfo.fullVersion()+"-"+wineInfo.getArch();
-//            File file = new File(installedWineDir, "container-pattern-"+suffix+".tzst");
-//            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, file, containerDir, onExtractFileListener);
-            ContentsManager contentsManager = new ContentsManager(context);
-            contentsManager.syncContents();
-            ContentProfile profile = contentsManager.getProfileByEntryName(wineVersion);
-            if (profile == null)
-                return false;
-            File file = ContentsManager.getSourceFile(context, profile, profile.winePrefixPack);
-            String suffix = FileUtils.getFileSuffix(file);
-            if (suffix.equals("xz") || suffix.equals("txz"))
-                return TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, file, containerDir, onExtractFileListener);
-            else if (suffix.equals("zst") || suffix.equals("tzst"))
-                return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, file, containerDir, onExtractFileListener);
-            return false;
-        }
-    }
-
     public boolean extractContainerPatternFile(Container container, String wineVersion, File containerDir, OnExtractFileListener onExtractFileListener) {
         if (WineInfo.isMainWineVersion(wineVersion)) {
 
@@ -298,11 +257,12 @@ public class ContainerManager {
 
 
             boolean result = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, containerPattern, containerDir, onExtractFileListener);
-
+             
             if (result) {
                 try {
                     JSONObject commonDlls = new JSONObject(FileUtils.readString(context, "common_dlls.json"));
-                    extractCommonDlls("x86_64-windows", "system32", commonDlls, containerDir, onExtractFileListener);
+                    if (!container.isBionic())
+                        extractCommonDlls("x86_64-windows", "system32", commonDlls, containerDir, onExtractFileListener);
                     extractCommonDlls("aarch64-windows", "system32", commonDlls, containerDir, onExtractFileListener); // arm64ec only
                     extractCommonDlls("i386-windows", "syswow64", commonDlls, containerDir, onExtractFileListener);
                 }
@@ -310,7 +270,7 @@ public class ContainerManager {
                     return false;
                 }
             }
-
+   
             return result;
         }
         else {
