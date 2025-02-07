@@ -7,6 +7,8 @@
     import com.winlator.core.FileUtils;
     import com.winlator.core.StringUtils;
 
+import java.io.IOException;
+import java.nio.file.Files;
     import org.json.JSONException;
     import org.json.JSONObject;
 
@@ -286,6 +288,24 @@
 
         public int getContainerId() {
             return container.id;
+        }
+         
+        public String getExecutable() {
+            String exe = "";
+            try {
+                List<String> lines = Files.readAllLines(file.toPath());
+                for (String line : lines) {
+                    if (line.startsWith("Exec")) {
+                        exe = line.substring(line.lastIndexOf("\\") + 1, line.length()).replaceAll("\\s+$", "");
+                        break;
+                    }
+                }
+            }
+            catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        
+            return exe;
         }
 
     }

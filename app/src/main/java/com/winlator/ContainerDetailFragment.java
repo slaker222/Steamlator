@@ -59,6 +59,7 @@ import com.winlator.core.WineInfo;
 import com.winlator.core.WineRegistryEditor;
 import com.winlator.core.WineThemeManager;
 import com.winlator.core.WineUtils;
+import com.winlator.fexcore.FEXCoreManager;
 import com.winlator.midi.MidiManager;
 import com.winlator.widget.CPUListView;
 import com.winlator.widget.ColorPickerView;
@@ -218,6 +219,16 @@ public class ContainerDetailFragment extends Fragment {
 
         Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         sBox64Preset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        
+        Spinner sFEXCoreTSOPreset = view.findViewById(R.id.SFEXCoreTSOPreset);
+        sFEXCoreTSOPreset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        
+        Spinner sFEXCoreMultiBlock = view.findViewById(R.id.SFEXCoreMultiblock);
+        sFEXCoreMultiBlock.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        
+        Spinner sFEXCoreX87ReducedPrecision = view.findViewById(R.id.SFEXCoreX87ReducedPrecision);
+        sFEXCoreX87ReducedPrecision.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        
 
         Spinner sStartupSelection = view.findViewById(R.id.SStartupSelection);
         sStartupSelection.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
@@ -284,6 +295,9 @@ public class ContainerDetailFragment extends Fragment {
         // Advanced Tab TextViews
         TextView box86box64Label = view.findViewById(R.id.TVBox86Box64);
         applyFieldSetLabelStyle(box86box64Label, isDarkMode);  // Apply the dark or light mode styles
+        
+        TextView fexCoreLabel = view.findViewById(R.id.TVFEXCore);
+        applyFieldSetLabelStyle(fexCoreLabel, isDarkMode);
 
         TextView systemLabel = view.findViewById(R.id.TVSystem);
         applyFieldSetLabelStyle(systemLabel, isDarkMode);  // Apply the dark or light mode styles
@@ -471,6 +485,12 @@ public class ContainerDetailFragment extends Fragment {
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
 
         Box86_64PresetManager.loadSpinner("box64", sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box86_64Preset.COMPATIBILITY));
+        
+        final Spinner sFEXCoreTSOPreset = view.findViewById(R.id.SFEXCoreTSOPreset);
+        final Spinner sFEXCoreMultiBlock = view.findViewById(R.id.SFEXCoreMultiblock);
+        final Spinner sFEXCoreX87ReducedPrecision = view.findViewById(R.id.SFEXCoreX87ReducedPrecision);
+        
+        FEXCoreManager.loadFEXCoreSpinners(context, container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
 
         final Switch swBionicContainer = view.findViewById(R.id.SWBionicContainer);
 
@@ -480,15 +500,18 @@ public class ContainerDetailFragment extends Fragment {
         }
         
         FrameLayout boxFL = view.findViewById(R.id.box86box64Frame);
+        FrameLayout fexcoreFL = view.findViewById(R.id.fexcoreFrame);
         
         if (!swBionicContainer.isChecked()) {
             // Remove wrapper from graphics driver entries.
             List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
             sGraphicsItemsList.remove("Wrapper");
             sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
+            fexcoreFL.setVisibility(View.GONE);
         }
         else {
             boxFL.setVisibility(View.GONE);
+            fexcoreFL.setVisibility(View.VISIBLE);
         }
 
         swBionicContainer.setOnCheckedChangeListener((buttonView, isChecked) -> {
@@ -500,6 +523,9 @@ public class ContainerDetailFragment extends Fragment {
                 // Disable Box64 section
                 boxFL.setVisibility(View.GONE);
                     
+                // Enable fexcore section
+                fexcoreFL.setVisibility(View.VISIBLE);     
+                    
                 // Readd wrapper to graphics driver entries    
                 List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
                 sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));   
@@ -509,6 +535,9 @@ public class ContainerDetailFragment extends Fragment {
 
                 // Enable Box64 section
                 boxFL.setVisibility(View.VISIBLE);
+                    
+                // Disable fexcore section
+                fexcoreFL.setVisibility(View.GONE);     
                     
                 // Remove wrapper from graphics driver entries    
                 List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
@@ -643,6 +672,8 @@ public class ContainerDetailFragment extends Fragment {
                     container.setBionic(isBionic);
                     container.saveData();
                     saveWineRegistryKeys(view);
+                    if (isBionic)    
+                        FEXCoreManager.saveFEXCoreSpinners(container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
                     getActivity().onBackPressed();
                 } else {
                     // Create new container with specified properties
@@ -693,6 +724,8 @@ public class ContainerDetailFragment extends Fragment {
                             container.setBionic(isBionic);
                             container.setGraphicsDriverVersion(graphicsDriverVersion);
                             saveWineRegistryKeys(view);
+                            if (isBionic)    
+                                FEXCoreManager.saveFEXCoreSpinners(container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
                         }
                         preloaderDialog.close();
                         getActivity().onBackPressed();

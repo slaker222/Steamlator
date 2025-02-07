@@ -37,6 +37,7 @@ import com.winlator.core.AppUtils;
 import com.winlator.core.DefaultVersion;
 import com.winlator.core.EnvVars;
 import com.winlator.core.StringUtils;
+import com.winlator.fexcore.FEXCoreManager;
 import com.winlator.inputcontrols.ControlsProfile;
 import com.winlator.inputcontrols.InputControlsManager;
 import com.winlator.midi.MidiManager;
@@ -260,6 +261,12 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
         final Spinner sBox64Preset = findViewById(R.id.SBox64Preset);
         Box86_64PresetManager.loadSpinner("box64", sBox64Preset, shortcut.getExtra("box64Preset", shortcut.container.getBox64Preset()));
+        
+        final Spinner sFEXCoreTSOPreset = findViewById(R.id.SFEXCoreTSOPreset);
+        final Spinner sFEXCoreMultiBlock = findViewById(R.id.SFEXCoreMultiblock);
+        final Spinner sFEXCoreX87ReducedPrecision = findViewById(R.id.SFEXCoreX87ReducedPrecision);
+        
+        FEXCoreManager.loadFEXCoreSpinners(context, shortcut, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
 
         final Spinner sRCFile = findViewById(R.id.SRCFile);
         final int[] rcfileIds = {0};
@@ -309,14 +316,18 @@ public class ShortcutSettingsDialog extends ContentDialog {
             });
             popupMenu.show();
         });
+        
+        FrameLayout boxFL = findViewById(R.id.box86box64Frame);
+        FrameLayout fexcoreFL = findViewById(R.id.fexcoreFrame);
+        
         // Handle bionic and glibc switching logic
         if (!shortcut.container.isBionic()) {
            List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
            sGraphicsItemsList.remove("Wrapper");
            sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
+           fexcoreFL.setVisibility(View.GONE);
         }
         else {
-            FrameLayout boxFL = findViewById(R.id.box86box64Frame);
             boxFL.setVisibility(View.GONE);
         }
 
@@ -402,9 +413,9 @@ public class ShortcutSettingsDialog extends ContentDialog {
                 // Save all changes to the shortcut
                 shortcut.saveData();
 //                shortcut.putExtra("overrideGraphicsDriver", overrideGraphicsDriver ? "1" : null);
+                FEXCoreManager.saveFEXCoreSpinners(shortcut.container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision); 
             }
         });
-
     }
 
     private void updateTurnipVersionText() {
@@ -501,6 +512,10 @@ public class ShortcutSettingsDialog extends ContentDialog {
         Spinner sDInputType = view.findViewById(R.id.SDInputType);
         Spinner sMIDISoundFont = view.findViewById(R.id.SMIDISoundFont);
         Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
+        Spinner sFEXCoreTSOPreset = findViewById(R.id.SFEXCoreTSOPreset);
+        Spinner sFEXCoreMultiBlock = findViewById(R.id.SFEXCoreMultiblock);
+        Spinner sFEXCoreX87ReducedPrecision = findViewById(R.id.SFEXCoreX87ReducedPrecision);
+        
 
         // Set dark or light mode background for spinners
         sGraphicsDriver.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
@@ -514,6 +529,9 @@ public class ShortcutSettingsDialog extends ContentDialog {
         sDInputType.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sMIDISoundFont.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sBox64Version.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        sFEXCoreTSOPreset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        sFEXCoreMultiBlock.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        sFEXCoreX87ReducedPrecision.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
 
 //        EditText etLC_ALL = view.findViewById(R.id.ETlcall);
         EditText etExecArgs = view.findViewById(R.id.ETExecArgs);

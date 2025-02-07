@@ -620,7 +620,52 @@
                         style="@style/FieldSetLabel"
                         android:text="@string/box86_box64" />
                 </FrameLayout>
-
+                
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/fexcoreFrame"
+                    android:layout_marginTop="8dp">
+                
+                    <LinearLayout style="@style/FieldSet">
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/fexcore_tso_preset" />
+                        
+                        <Spinner
+                            style="@style/ComboBox"
+                            android:id="@+id/SFEXCoreTSOPreset"
+                            android:layout_width="match_parent" />
+                        
+                       <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/fexcore_x87reduced_precision" />
+                        
+                        <Spinner
+                            style="@style/ComboBox"
+                            android:id="@+id/SFEXCoreX87ReducedPrecision"
+                            android:layout_width="match_parent"/>
+                       
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/fexcore_multiblock" />
+                        
+                       <Spinner
+                            style="@style/ComboBox"
+                            android:id="@+id/SFEXCoreMultiblock"
+                            android:layout_width="match_parent"/>
+                    </LinearLayout>
+                    
+                    <TextView
+                        android:id="@+id/TVFEXCore"
+                        style="@style/FieldSetLabel"
+                        android:text="@string/fexcore_config" />
+                    
+                </FrameLayout>
+                
                 <FrameLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

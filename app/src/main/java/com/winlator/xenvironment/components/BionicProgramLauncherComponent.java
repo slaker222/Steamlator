@@ -184,8 +184,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             addBox86EnvVars(envVars, enableBox86_64Logs);
         }
         addBox64EnvVars(envVars, enableBox86_64Logs);
-        
-        createFexCoreConfigFile();
 
         // Setting up essential environment variables for Wine
         envVars.put("HOME", imageFs.home_path);
@@ -266,30 +264,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.putAll(Box86_64PresetManager.getEnvVars("box64", environment.getContext(), box64Preset));
         envVars.put("BOX64_X11GLX", "1");
-    }
-    
-    private void createFexCoreConfigFile() {
-        ImageFs imageFs = environment.getImageFs();
-        File fexConfig = new File(imageFs.home_path + "/.fex-emu/Config.json");
-        if (!fexConfig.exists()) {
-            try {
-                JSONObject config = new JSONObject();
-                JSONObject opts = new JSONObject()
-                    .put("Multiblock", "1")
-                    .put("TSOEnabled", "0")
-                    .put("VectorTSOEnabled", "0")
-                    .put("MemcpySetTSOEnabled", "0")
-                    .put("HalfBarrierTSOEnabled", "0")
-                    .put("X87ReducedPrecision", "1")
-                    .put("ParanoidTSO", "0");
-                config.put("Config", opts);
-                String json = config.toString();
-                FileUtils.writeString(fexConfig, json);
-            }
-            catch (JSONException e) {
-                throw new RuntimeException(e);
-            } 
-        }
     }
 
     public void suspendProcess() {
