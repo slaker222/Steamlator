@@ -9,6 +9,7 @@ import android.util.Log;
 
 import androidx.preference.PreferenceManager;
 
+import com.google.gson.JsonObject;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
 import com.winlator.container.Shortcut;
@@ -25,9 +26,12 @@ import com.winlator.xenvironment.ImageFs;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
+import org.json.JSONException;
+import org.json.JSONObject;
 import org.newsclub.net.unix.AFUNIXSocket;
 import org.newsclub.net.unix.AFUNIXSocketAddress;
 
@@ -180,6 +184,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             addBox86EnvVars(envVars, enableBox86_64Logs);
         }
         addBox64EnvVars(envVars, enableBox86_64Logs);
+        
+        createFexCoreConfigFile();
 
         // Setting up essential environment variables for Wine
         envVars.put("HOME", imageFs.home_path);
@@ -195,7 +201,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         // **Maybe remove this
         envVars.put("BOX64_LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib/x86_64-linux-gnu");
-
+ 
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         
         // Check for specific shared memory libraries
@@ -260,6 +266,30 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.putAll(Box86_64PresetManager.getEnvVars("box64", environment.getContext(), box64Preset));
         envVars.put("BOX64_X11GLX", "1");
+    }
+    
+    private void createFexCoreConfigFile() {
+        ImageFs imageFs = environment.getImageFs();
+        File fexConfig = new File(imageFs.home_path + "/.fex-emu/Config.json");
+        if (!fexConfig.exists()) {
+            try {
+                JSONObject config = new JSONObject();
+                JSONObject opts = new JSONObject()
+                    .put("Multiblock", "1")
+                    .put("TSOEnabled", "0")
+                    .put("VectorTSOEnabled", "0")
+                    .put("MemcpySetTSOEnabled", "0")
+                    .put("HalfBarrierTSOEnabled", "0")
+                    .put("X87ReducedPrecision", "1")
+                    .put("ParanoidTSO", "0");
+                config.put("Config", opts);
+                String json = config.toString();
+                FileUtils.writeString(fexConfig, json);
+            }
+            catch (JSONException e) {
+                throw new RuntimeException(e);
+            } 
+        }
     }
 
     public void suspendProcess() {
