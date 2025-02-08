@@ -2244,10 +2244,22 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     private void extractGraphicsDriverFiles() {
         String cacheId = graphicsDriver;
-        String selectedDriverVersion = container.getGraphicsDriverVersion(); // Fetch the selected version
+        String selectedDriverVersion = "";
+        String currentTurnipVersion = container.getTurnipGraphicsDriverVersion();
+        String currentWrapperVersion = container.getWrapperGraphicsDriverVersion();
+        
+        if (graphicsDriver.contains("turnip"))
+            selectedDriverVersion = currentTurnipVersion; // Fetch the selected version
+        else if (graphicsDriver.contains("wrapper"))
+            selectedDriverVersion = currentWrapperVersion;
 
         if (shortcut != null) {
-            selectedDriverVersion = shortcut.getExtra("graphicsDriverVersion", container.getGraphicsDriverVersion());
+            currentTurnipVersion = shortcut.getExtra("turnipGraphicsDriverVersion", container.getTurnipGraphicsDriverVersion());
+            currentWrapperVersion = shortcut.getExtra("wrapperGraphicsDriverVersion", container.getWrapperGraphicsDriverVersion());
+           if (graphicsDriver.equals("turnip"))
+               selectedDriverVersion = currentTurnipVersion; // Fetch the selected version
+           else
+               selectedDriverVersion = currentWrapperVersion;
         }
 
         if (container.isBionic() && graphicsDriver.equals("turnip") && !selectedDriverVersion.equals(DefaultVersion.BIONIC)) {

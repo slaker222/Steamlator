@@ -31,23 +31,14 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
     public interface OnGraphicsDriverVersionSelectedListener {
         void onGraphicsDriverVersionSelected(String version);
     }
-
-
-    // Constructor for container context
-    public GraphicsDriverConfigDialog(View anchor, Container container, ContainerManager containerManager, @Nullable String initialVersion, OnGraphicsDriverVersionSelectedListener listener) {
+  
+    public GraphicsDriverConfigDialog(View anchor, String initialVersion, String graphicsDriver, ContainerManager containerManager, OnGraphicsDriverVersionSelectedListener listener) {
         super(anchor.getContext(), R.layout.graphics_driver_config_dialog);
         this.containerManager = containerManager;
-        initializeDialog(anchor, container.getGraphicsDriverVersion(), container.getRootDir(), listener);
+        initializeDialog(anchor, initialVersion, graphicsDriver, null, listener);
     }
 
-    // Constructor for shortcut context
-    public GraphicsDriverConfigDialog(View anchor, String shortcutGraphicsDriverVersion, ContainerManager containerManager, OnGraphicsDriverVersionSelectedListener listener) {
-        super(anchor.getContext(), R.layout.graphics_driver_config_dialog);
-        this.containerManager = containerManager;
-        initializeDialog(anchor, shortcutGraphicsDriverVersion, null, listener);
-    }
-
-    private void initializeDialog(View anchor, String initialVersion, @Nullable File rootDir, OnGraphicsDriverVersionSelectedListener listener) {
+    private void initializeDialog(View anchor, String initialVersion, String graphicsDriver, @Nullable File rootDir, OnGraphicsDriverVersionSelectedListener listener) {
         setIcon(R.drawable.icon_settings);
         setTitle(anchor.getContext().getString(R.string.graphics_driver_configuration));
 
@@ -56,9 +47,9 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         // Ensure ContentsManager syncContents is called
         ContentsManager contentsManager = new ContentsManager(anchor.getContext());
         contentsManager.syncContents();
-
+        
         // Populate the spinner with available versions from ContentsManager and pre-select the initial version
-        populateGraphicsDriverVersions(anchor.getContext(), contentsManager, initialVersion);
+        populateGraphicsDriverVersions(anchor.getContext(), contentsManager, initialVersion, graphicsDriver);
 
         // Update the selectedVersion whenever the user selects a different version
         sVersion.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -148,36 +139,50 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
 //        });
 //    }
 
-    private void populateGraphicsDriverVersions(Context context, ContentsManager contentsManager, @Nullable String initialVersion) {
-        List<String> versions = new ArrayList<>();
+    private void populateGraphicsDriverVersions(Context context, ContentsManager contentsManager, @Nullable String initialVersion, String graphicsDriver) {
+        List<String> turnipVersions = new ArrayList<>();
+        List<String> wrapperVersions = new ArrayList<>();
 
         // Load the default versions from arrays.xml
-        String[] defaultVersions = context.getResources().getStringArray(R.array.graphics_driver_version_entries);
-        versions.addAll(Arrays.asList(defaultVersions));
+        String[] turnipDefaultVersions = context.getResources().getStringArray(R.array.turnip_graphics_driver_version_entries);
+        String[] wrapperDefaultVersions = context.getResources().getStringArray(R.array.wrapper_graphics_driver_version_entries);
+        turnipVersions.addAll(Arrays.asList(turnipDefaultVersions));
+        wrapperVersions.addAll(Arrays.asList(wrapperDefaultVersions));
+
 
         // Add installed versions from ContentsManager
         List<ContentProfile> profiles = contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_TURNIP);
         if (profiles != null) {
             for (ContentProfile profile : profiles) {
                 String profileName = ContentsManager.getEntryName(profile);
-                if (profileName != null && !versions.contains(profileName)) {
-                    versions.add(profileName);
+                if (profileName != null && !turnipVersions.contains(profileName)) {
+                    turnipVersions.add(profileName);
                 }
             }
         }
 
         // Set the adapter and select the initial version
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, versions);
-        sVersion.setAdapter(adapter);
+        ArrayAdapter<String> turnipAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, turnipVersions);
+        ArrayAdapter<String> wrapperAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, wrapperVersions);
+        
+        if (graphicsDriver.contains("turnip"))
+            sVersion.setAdapter(turnipAdapter);
+        else
+            sVersion.setAdapter(wrapperAdapter);
 
         // Use the custom selection logic
         boolean found = setSpinnerSelectionWithFallback(sVersion, initialVersion);
+    
         if (!found) {
             // Fallback to the first default version if initialVersion is not found
-            AppUtils.setSpinnerSelectionFromValue(sVersion, defaultVersions[0]);
+            if (graphicsDriver.contains("turnip"))
+                AppUtils.setSpinnerSelectionFromValue(sVersion, turnipDefaultVersions[0]);
+            else 
+                AppUtils.setSpinnerSelectionFromValue(sVersion, wrapperDefaultVersions[0]);
         }
 
         // Log the selection process to identify mismatches
+        Log.d(TAG, "Graphics driver: " + graphicsDriver);
         Log.d(TAG, "Initial version: " + initialVersion);
         Log.d(TAG, "Spinner selected position: " + sVersion.getSelectedItemPosition());
         Log.d(TAG, "Spinner selected value: " + sVersion.getSelectedItem());

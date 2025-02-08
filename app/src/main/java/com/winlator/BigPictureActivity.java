@@ -986,8 +986,13 @@ public class BigPictureActivity extends AppCompatActivity {
 
         // Get the associated container for this shortcut (unchanged)
         Container container = manager.getContainerForShortcut(shortcut);
-        setTextOrPlaceholder(graphicsDriverView, shortcut.getExtra("graphicsDriver"), container.getGraphicsDriver());
-        setTextOrPlaceholder(graphicsDriverVersionView, shortcut.getExtra("graphicsDriverVersion"), container.getGraphicsDriverVersion());
+        String graphicsDriver = shortcut.getExtra("graphicsDriver");
+        
+        setTextOrPlaceholder(graphicsDriverView, graphicsDriver, container.getGraphicsDriver());
+        if (graphicsDriver.contains("turnip"))
+            setTextOrPlaceholder(graphicsDriverVersionView, shortcut.getExtra("turnipGraphicsDriverVersion"), container.getTurnipGraphicsDriverVersion());
+        else
+            setTextOrPlaceholder(graphicsDriverVersionView, shortcut.getExtra("wrapperGraphicsDriverVersion"), container.getWrapperGraphicsDriverVersion());
         setTextOrPlaceholder(dxWrapperView, shortcut.getExtra("dxwrapper"), container.getDXWrapper());
         setTextOrPlaceholder(dxWrapperConfigView, shortcut.getExtra("dxwrapperConfig"), container.getDXWrapperConfig());
         setTextOrPlaceholder(audioDriverView, shortcut.getExtra("audioDriver"), container.getAudioDriver());

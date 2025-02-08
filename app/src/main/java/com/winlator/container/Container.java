@@ -26,9 +26,9 @@ public class Container {
     }
     public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform DXVK_HUD=devinfo,fps,frametimes,gpuload,version,api MANGOHUD=0 MANGOHUD_CONFIG=engine_version,gpu_stats=0";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
-    public static final String DEFAULT_GRAPHICS_DRIVER = XrActivity.isSupported() ? "virgl-23.1.9" : "turnip";
+    public static final String DEFAULT_GRAPHICS_DRIVER = XrActivity.isSupported() ? "wrapper" : "turnip";
     public static final String DEFAULT_AUDIO_DRIVER = XrActivity.isSupported() ? "pulseaudio" : "alsa";
-    public static final String DEFAULT_DXWRAPPER = XrActivity.isSupported() ? "wined3d" : "dxvk";
+    public static final String DEFAULT_DXWRAPPER = "dxvk";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,vcrun2010=1,wmdecoder=1";
     public static final String DEFAULT_DRIVES = "D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"E:/data/data/com.winlator/storage";
@@ -65,18 +65,28 @@ public class Container {
     private int primaryController = 1;
     private String controllerMapping = new String(new char[XrControllerMapping.values().length]);
 
-    private String graphicsDriverVersion = "24.3.0"; // Default version or fallback
+    private String turnipGraphicsDriverVersion = "24.3.0"; // Default version or fallback
+    private String wrapperGraphicsDriverVersion = "System";
 
     private ContainerManager containerManager;
 
 
-    public String getGraphicsDriverVersion() {
-        return graphicsDriverVersion;
+    public String getTurnipGraphicsDriverVersion() {
+        return turnipGraphicsDriverVersion;
     }
 
-    public void setGraphicsDriverVersion(String graphicsDriverVersion) {
+    public void setTurnipGraphicsDriverVersion(String graphicsDriverVersion) {
         Log.d("Container", "Setting graphicsDriverVersion: " + graphicsDriverVersion);
-        this.graphicsDriverVersion = graphicsDriverVersion;
+        this.turnipGraphicsDriverVersion = graphicsDriverVersion;
+    }
+    
+    public String getWrapperGraphicsDriverVersion() {
+        return wrapperGraphicsDriverVersion;
+    }
+
+    public void setWrapperGraphicsDriverVersion(String graphicsDriverVersion) {
+        Log.d("Container", "Setting graphicsDriverVersion: " + graphicsDriverVersion);
+        this.wrapperGraphicsDriverVersion = graphicsDriverVersion;
     }
 
 
@@ -397,8 +407,9 @@ public class Container {
             data.put("cpuList", cpuList);
             data.put("cpuListWoW64", cpuListWoW64);
             data.put("graphicsDriver", graphicsDriver);
-            Log.d("Container", "Saving graphicsDriverVersion: " + graphicsDriverVersion);
-            data.put("graphicsDriverVersion", graphicsDriverVersion); // Ensure this is added
+            Log.d("Container", "Saving graphicsDriverVersions: " + turnipGraphicsDriverVersion + " " + wrapperGraphicsDriverVersion);
+            data.put("turnipGraphicsDriverVersion", turnipGraphicsDriverVersion); // Ensure this is added
+            data.put("wrapperGraphicsDriverVersion", wrapperGraphicsDriverVersion);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
@@ -454,8 +465,11 @@ public class Container {
                 case "graphicsDriver" :
                     setGraphicsDriver(data.getString(key));
                     break;
-                case "graphicsDriverVersion":
-                    setGraphicsDriverVersion(data.getString(key));
+                case "turnipGraphicsDriverVersion":
+                    setTurnipGraphicsDriverVersion(data.getString(key));
+                    break;
+               case "wrapperGraphicsDriverVersion":
+                    setWrapperGraphicsDriverVersion(data.getString(key));
                     break;
                 case "wincomponents" :
                     setWinComponents(data.getString(key));

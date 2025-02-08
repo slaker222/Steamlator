@@ -59,7 +59,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
 //
 //    private boolean overrideGraphicsDriver = false;
 
-    private TextView tvTurnipVersion;  // For displaying the turnip version
+    private TextView tvGraphicsDriverVersion; 
 
     private String box64Version;
 
@@ -100,10 +100,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         applyDynamicStyles(findViewById(R.id.LLContent), isDarkMode);
 
         // Initialize the turnip version TextView
-        tvTurnipVersion = findViewById(R.id.TVTurnipVersion);
-
-        // Set initial Turnip version from shortcut extras or container
-        updateTurnipVersionText();
+        tvGraphicsDriverVersion = findViewById(R.id.TVGraphicsDriverVersion);
 
         // Get the shared preferences and check the legacy mode status
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
@@ -126,9 +123,11 @@ public class ShortcutSettingsDialog extends ContentDialog {
         final Spinner sDXWrapper = findViewById(R.id.SDXWrapper);
 
         final Spinner sBox64Version = findViewById(R.id.SBox64Version);
+        
         ContentsManager contentsManager = new ContentsManager(context);
+        
         contentsManager.syncContents();
-        ContainerDetailFragment.updateGraphicsDriverSpinner(context, contentsManager, sGraphicsDriver);
+        
         loadBox64VersionSpinner(context, contentsManager, sBox64Version);
 
         // Add this part to set the initial spinner selection based on the shortcut
@@ -157,20 +156,13 @@ public class ShortcutSettingsDialog extends ContentDialog {
             }
         });
 
-
         final View vGraphicsDriverConfig = findViewById(R.id.BTGraphicsDriverConfig);
-        vGraphicsDriverConfig.setTag(shortcut.getExtra("graphicsDriverVersion", shortcut.container.getGraphicsDriverVersion()));
-        vGraphicsDriverConfig.setOnClickListener((v) -> {
-
-            showGraphicsDriverConfigDialog(vGraphicsDriverConfig);
-
-        });
-
+        
         final View vDXWrapperConfig = findViewById(R.id.BTDXWrapperConfig);
         vDXWrapperConfig.setTag(shortcut.getExtra("dxwrapperConfig", shortcut.container.getDXWrapperConfig()));
 
         ContainerDetailFragment.setupDXWrapperSpinner(sDXWrapper, vDXWrapperConfig);
-        ContainerDetailFragment.loadGraphicsDriverSpinner(sGraphicsDriver, sDXWrapper, shortcut.getExtra("graphicsDriver", shortcut.container.getGraphicsDriver()),
+        loadGraphicsDriverSpinner(sGraphicsDriver, sDXWrapper, vGraphicsDriverConfig, shortcut.getExtra("graphicsDriver", shortcut.container.getGraphicsDriver()),
             shortcut.getExtra("dxwrapper", shortcut.container.getDXWrapper()));
 
         findViewById(R.id.BTHelpDXWrapper).setOnClickListener((v) -> AppUtils.showHelpBox(context, v, R.string.dxwrapper_help_content));
@@ -369,7 +361,10 @@ public class ShortcutSettingsDialog extends ContentDialog {
                 shortcut.putExtra("execArgs", !execArgs.isEmpty() ? execArgs : null);
                 shortcut.putExtra("screenSize", !screenSize.equals(shortcut.container.getScreenSize()) ? screenSize : null);
                 shortcut.putExtra("graphicsDriver", !graphicsDriver.equals(shortcut.container.getGraphicsDriver()) ? graphicsDriver : null);
-                shortcut.putExtra("graphicsDriverVersion", graphicsDriverConfig);
+                if (graphicsDriver.contains("turnip"))    
+                    shortcut.putExtra("turnipGraphicsDriverVersion", graphicsDriverConfig);
+                else if(graphicsDriver.contains("wrapper"))
+                    shortcut.putExtra("wrapperGraphicsDriverVersion", graphicsDriverConfig);
                 shortcut.putExtra("dxwrapper", !dxwrapper.equals(shortcut.container.getDXWrapper()) ? dxwrapper : null);
                 shortcut.putExtra("dxwrapperConfig", !dxwrapperConfig.equals(shortcut.container.getDXWrapperConfig()) ? dxwrapperConfig : null);
                 shortcut.putExtra("audioDriver", !audioDriver.equals(shortcut.container.getAudioDriver()) ? audioDriver : null);
@@ -418,18 +413,20 @@ public class ShortcutSettingsDialog extends ContentDialog {
         });
     }
 
-    private void updateTurnipVersionText() {
+    private void updateGraphicsDriverVersionText() {
         // Retrieve the shortcut-specific graphics driver version
-        String turnipVersion = shortcut.getExtra("graphicsDriverVersion", null);
-
-        // Check if the shortcut version is empty or null, and fallback to the container's version only in that case
-        if (turnipVersion == null || turnipVersion.isEmpty()) {
-            // If no version is set, fallback to the container's default version
-            turnipVersion = shortcut.container.getGraphicsDriverVersion();
-        }
-
-        // Update the TextView with the correct version
-        tvTurnipVersion.setText(turnipVersion);
+        String turnipVersion = shortcut.getExtra("turnipGraphicsDriverVersion", shortcut.container.getTurnipGraphicsDriverVersion());
+        String wrapperVersion = shortcut.getExtra("wrapperGraphicsDriverVersion", shortcut.container.getWrapperGraphicsDriverVersion());
+        String graphicsDriver = shortcut.getExtra("graphicsDriver", shortcut.container.getGraphicsDriver());
+        
+        if(graphicsDriver.contains("turnip"))
+            tvGraphicsDriverVersion.setText(turnipVersion);
+        else
+            tvGraphicsDriverVersion.setText(wrapperVersion);
+    }
+    
+    private void updateGraphicsDriverVersionText(String version) {
+        tvGraphicsDriverVersion.setText(version);
     }
 
     // Utility method to apply styles to dynamically added TextViews based on their content
@@ -565,13 +562,22 @@ public class ShortcutSettingsDialog extends ContentDialog {
         }
     }
 
-    private void showGraphicsDriverConfigDialog(View anchor) {
+    private void showGraphicsDriverConfigDialog(View anchor, String graphicsDriver) {
         // Use the shortcut's graphics driver version to initialize the dialog
-        new GraphicsDriverConfigDialog(anchor, shortcut.getExtra("graphicsDriverVersion", shortcut.container.getGraphicsDriverVersion()), shortcut.container.getManager(), version -> {
+        String graphicsDriverVersion;
+        if (graphicsDriver.contains("turnip"))
+            graphicsDriverVersion = shortcut.getExtra("turnipGraphicsDriverVersion", shortcut.container.getTurnipGraphicsDriverVersion());
+        else
+            graphicsDriverVersion = shortcut.getExtra("wrapperGraphicsDriverVersion", shortcut.container.getWrapperGraphicsDriverVersion());
+        new GraphicsDriverConfigDialog(anchor, graphicsDriverVersion, graphicsDriver, shortcut.container.getManager(), (version) -> {
             // Update the shortcut's graphics driver version with the selected version from the dialog.
-            shortcut.putExtra("graphicsDriverVersion", version);
+            if (graphicsDriver.contains("turnip"))     
+                shortcut.putExtra("turnipGraphicsDriverVersion", version);
+            else
+                shortcut.putExtra("wrapperGraphicsDriverVersion", version);
+            
             // Update the displayed Turnip version dynamically
-            updateTurnipVersionText();
+            updateGraphicsDriverVersionText(version);
         }).show();
     }
 
@@ -685,5 +691,71 @@ public class ShortcutSettingsDialog extends ContentDialog {
             itemList.add(entryName.substring(firstDashIndex + 1));
         }
         spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, itemList));
+    }
+    
+    public void loadGraphicsDriverSpinner(final Spinner sGraphicsDriver, final Spinner sDXWrapper, final View vGraphicsDriverConfig, String selectedGraphicsDriver, String selectedDXWrapper) {
+        final Context context = sGraphicsDriver.getContext();
+        
+        ContainerDetailFragment.updateGraphicsDriverSpinner(context, sGraphicsDriver);
+        
+        final String[] dxwrapperEntries = context.getResources().getStringArray(R.array.dxwrapper_entries);
+        
+        Runnable update = () -> {
+            String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
+            boolean addAll = graphicsDriver.equals("turnip") || graphicsDriver.equals("wrapper");
+
+            ArrayList<String> items = new ArrayList<>();
+            for (String value : dxwrapperEntries) {
+                if (addAll || (!value.equals("DXVK") && !value.equals("VKD3D"))) {
+                    items.add(value);
+                }
+            }
+            sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray(new String[0])));
+            AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
+        };
+
+        sGraphicsDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+               String driver = StringUtils.parseIdentifier(parent.getItemAtPosition(position));
+                Log.d("Selected driver in shortcut", driver);     
+                switch(driver) {
+                    case "virgl":
+                        vGraphicsDriverConfig.setVisibility(View.GONE);
+                        updateGraphicsDriverVersionText("");
+                        break;
+                    case "turnip":
+                        vGraphicsDriverConfig.setVisibility(View.VISIBLE);
+                        vGraphicsDriverConfig.setTag(shortcut.getExtra("turnipGraphicsDriverVersion", shortcut.container.getTurnipGraphicsDriverVersion()));
+                        updateGraphicsDriverVersionText(shortcut.getExtra("turnipGraphicsDriverVersion", shortcut.container.getTurnipGraphicsDriverVersion()));
+                        break;
+                    case "wrapper":
+                        vGraphicsDriverConfig.setVisibility(View.VISIBLE);
+                        vGraphicsDriverConfig.setTag(shortcut.getExtra("wrapperGraphicsDriverVersion", shortcut.container.getWrapperGraphicsDriverVersion()));
+                        updateGraphicsDriverVersionText(shortcut.getExtra("wrapperGraphicsDriverVersion", shortcut.container.getWrapperGraphicsDriverVersion()));
+                        break;
+                }
+                if (!driver.contains("virgl")) {
+                    vGraphicsDriverConfig.setOnClickListener((v) -> {
+                        showGraphicsDriverConfigDialog(vGraphicsDriverConfig, StringUtils.parseIdentifier(driver));
+                    });
+                }           
+                update.run();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                String driver = StringUtils.parseIdentifier(parent.getSelectedItem());
+                Log.d("Selected driver in shortcut", driver);
+                if (!driver.contains(("virgl"))) {
+                    vGraphicsDriverConfig.setOnClickListener((v) -> {
+                        showGraphicsDriverConfigDialog(vGraphicsDriverConfig, StringUtils.parseIdentifier(driver));
+                    });
+                }             
+            }
+        });
+
+        AppUtils.setSpinnerSelectionFromIdentifier(sGraphicsDriver, selectedGraphicsDriver);
+        update.run();
     }
 }

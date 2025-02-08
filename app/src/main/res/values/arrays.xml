@@ -23,12 +23,15 @@
         <item>VirGL</item>
         <item>Wrapper</item>
     </string-array>
-    <string-array name="graphics_driver_version_entries">
+    <string-array name="turnip_graphics_driver_version_entries">
         <item>24.0.9</item>
         <item>24.1.0</item>
         <item>24.3.0</item>
         <item>24.3.0.5</item>
         <item>25.0.0.bionic</item>
+    </string-array>
+    <string-array name="wrapper_graphics_driver_version_entries">
+        <item>System</item>
     </string-array>
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
