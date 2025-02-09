@@ -67,6 +67,7 @@ import com.winlator.contentdialog.ScreenEffectDialog;
 import com.winlator.contentdialog.VKD3DConfigDialog;
 import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
+import com.winlator.contents.AdrenotoolsManager;
 import com.winlator.core.AppUtils;
 import com.winlator.core.DefaultVersion;
 import com.winlator.core.EnvVars;
@@ -2244,6 +2245,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     private void extractGraphicsDriverFiles() {
         String cacheId = graphicsDriver;
+        String adrenoToolsDriverId = "";
         String selectedDriverVersion = "";
         String currentTurnipVersion = container.getTurnipGraphicsDriverVersion();
         String currentWrapperVersion = container.getWrapperGraphicsDriverVersion();
@@ -2275,6 +2277,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             cacheId += "-" + DefaultVersion.ZINK;    // Append Zink version for Turnip driver
         } else if (graphicsDriver.equals("virgl")) {
             cacheId += "-" + DefaultVersion.VIRGL;   // Append version for VirGL driver
+        } else if (graphicsDriver.equals("wrapper")) {
+            adrenoToolsDriverId = (selectedDriverVersion.contains("System")) ? "" : "adrenotools-" + selectedDriverVersion;
+            Log.d("GraphicsDriverExtraction", "Adrenotools DriverID: " + adrenoToolsDriverId);
         }
 
         Log.d("GraphicsDriverExtraction", "Cache ID: " + cacheId);
@@ -2414,7 +2419,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             envVars.put("LIBGL_KOPPER_DISABLE", "true");
             if (changed)
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
-        }
+            if (adrenoToolsDriverId != "") {
+                AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
+                adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
+            }    
+        }    
     }
 
 
