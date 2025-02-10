@@ -1,11 +1,29 @@
 package com.winlator.contents;
+
+import android.content.res.AssetManager;
+import android.net.Uri;
+import com.winlator.R;
+
 import android.content.Context;
 import android.util.Log;
+import com.winlator.container.Container;
+import com.winlator.container.Shortcut;
+import com.winlator.container.ContainerManager;
 import com.winlator.core.EnvVars;
 import com.winlator.core.FileUtils;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.xenvironment.ImageFs;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -20,7 +38,7 @@ public class AdrenotoolsManager {
         
     }
         
-    public String getLibraryName(Context ctx, String adrenoToolsDriverId) {
+    public String getLibraryName(String adrenoToolsDriverId) {
         String libraryName = "";
         File driverPath = new File(adrenotoolsContentDir, adrenoToolsDriverId);
         try {
@@ -33,22 +51,142 @@ public class AdrenotoolsManager {
         }
         return libraryName;
     }
+    
+    public String getDriverName(String adrenoToolsDriverId) {
+        String driverName = "";
+        File driverPath = new File(adrenotoolsContentDir, adrenoToolsDriverId);
+        try {
+            File metaProfile = new File(driverPath, "meta.json");
+            JSONObject jsonObject = new JSONObject(FileUtils.readString(metaProfile));
+            driverName = jsonObject.getString("name");
+        }
+        catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+        return driverName;
+    }
+    
+    private void reloadContainers(String adrenoToolsDriverId) {
+        ContainerManager containerManager = new ContainerManager(mContext);
+        for (Container container : containerManager.getContainers()) {
+            Log.d("AdrenotoolsManager", "Checking if container driver version " + container.getWrapperGraphicsDriverVersion() + " matches " + getDriverName(adrenoToolsDriverId));
+            if (container.getWrapperGraphicsDriverVersion().contains(getDriverName(adrenoToolsDriverId))) {
+                Log.d("AdrenotoolsManager", "Found a match for container " + container.getName());
+                container.setWrapperGraphicsDriverVersion("System");
+                container.saveData();
+            }     
+        }
+        for (Shortcut shortcut : containerManager.loadShortcuts()) {
+            String version = shortcut.getExtra("wrapperGraphicsDriverVersion");
+            Log.d("AdrenotoolsManager", "Checking if shortcut driver version " + version + " matches " + getDriverName(adrenoToolsDriverId));
+            if (version.contains(getDriverName(adrenoToolsDriverId))) {
+                Log.d("AdrenotoolsManager", "Found a match for shortcut " + shortcut.name);
+                shortcut.putExtra("wrapperGraphicsDriverVersion", "System");
+                shortcut.saveData();
+            }
+        }
+    }
+    
+    public void removeDriver(String adrenoToolsDriverId) {
+        Log.d("AdrenotoolsManager", "Removing driver " + adrenoToolsDriverId);
+        File driverPath = new File(adrenotoolsContentDir, adrenoToolsDriverId);
+        reloadContainers(adrenoToolsDriverId);
+        FileUtils.delete(driverPath);
+    }
+    
+    public String getDriverVersion(String adrenoToolsDriverId) {
+        String driverVersion = "";
+        File driverPath = new File(adrenotoolsContentDir, adrenoToolsDriverId);
+        try {
+            File metaProfile = new File(driverPath, "meta.json");
+            JSONObject jsonObject = new JSONObject(FileUtils.readString(metaProfile));
+            driverVersion = jsonObject.getString("driverVersion");
+        }
+        catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+        return driverVersion;
+    }
+    
+    public ArrayList<String> enumarateInstalledDrivers() {
+        ArrayList<String> driversList = new ArrayList<>();
         
-    public void extractDriver(Context ctx, String adrenotoolsDriverId) {
+        for (File f : adrenotoolsContentDir.listFiles()) {
+            boolean fromResources = isFromResources("graphics_driver/adrenotools-" + f.getName() + ".tzst");
+            if (!fromResources)
+                driversList.add(f.getName());
+        }
+        return driversList;
+    }
+    
+    private boolean isFromResources(String driver) {
+        AssetManager am = mContext.getResources().getAssets();
+        InputStream is = null;
+        boolean isFromResources = true;
+        
+        try {
+            is = am.open(driver);
+            is.close();
+        }
+        catch (IOException e) {
+            isFromResources = false;
+        }
+        
+        return isFromResources;
+    }
+        
+    private boolean extractDriverFromResources(String adrenotoolsDriverId) {
+        String src = "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".tzst";
+        boolean hasExtracted;
+        
         File dst = new File(adrenotoolsContentDir, adrenotoolsDriverId);
-        String src = "graphics_driver/" + adrenotoolsDriverId + ".tzst";
-        if (!dst.exists()) {
-            dst.mkdirs();
-            Log.d("AdrenotoolsManager", "Extracting " + src + " to " + dst.getAbsolutePath());
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst);
-        }    
+        dst.mkdirs();
+        Log.d("AdrenotoolsManager", "Extracting " + src + " to " + dst.getAbsolutePath());
+        hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst);
+        
+        return hasExtracted;
+    }
+    
+    public String installDriver(Uri driverUri) {
+        File tmpDir = new File(adrenotoolsContentDir, "tmp");
+        tmpDir.mkdirs();
+        ZipInputStream zis;
+        InputStream is;
+        String name;
+        
+        try {
+            is = mContext.getContentResolver().openInputStream(driverUri);
+            zis = new ZipInputStream(is);
+            ZipEntry entry = zis.getNextEntry();
+            while (entry != null) {
+                File dstFile = new File(tmpDir, entry.getName());
+                Files.copy(zis, dstFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                entry = zis.getNextEntry();
+            }
+            zis.close();
+            name = getDriverName(tmpDir.getName());
+            File dst = new File(adrenotoolsContentDir, name);
+            if (!dst.exists())
+                tmpDir.renameTo(dst);
+            else {
+                name = "";
+                FileUtils.delete(tmpDir);
+            }     
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        
+        return name;
     }
     
     public void setDriverById(EnvVars envVars, ImageFs imagefs, String adrenotoolsDriverId) {
-        extractDriver(mContext, adrenotoolsDriverId);
-        String driverPath = adrenotoolsContentDir.getAbsolutePath() + "/" + adrenotoolsDriverId + "/";
-        envVars.put("ADRENOTOOLS_DRIVER_PATH", driverPath);
-        envVars.put("ADRENOTOOLS_HOOKS_PATH", imagefs.getLibDir());
-        envVars.put("ADRENOTOOLS_DRIVER_NAME", getLibraryName(mContext, adrenotoolsDriverId));
+        extractDriverFromResources(adrenotoolsDriverId);
+        if (extractDriverFromResources(adrenotoolsDriverId) || enumarateInstalledDrivers().contains(adrenotoolsDriverId)) {
+            String driverPath = adrenotoolsContentDir.getAbsolutePath() + "/" + adrenotoolsDriverId + "/";
+            envVars.put("ADRENOTOOLS_DRIVER_PATH", driverPath);
+            envVars.put("ADRENOTOOLS_HOOKS_PATH", imagefs.getLibDir());
+            envVars.put("ADRENOTOOLS_DRIVER_NAME", getLibraryName(adrenotoolsDriverId));
+        }    
     }
  }

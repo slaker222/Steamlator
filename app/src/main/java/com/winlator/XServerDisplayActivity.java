@@ -2278,7 +2278,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         } else if (graphicsDriver.equals("virgl")) {
             cacheId += "-" + DefaultVersion.VIRGL;   // Append version for VirGL driver
         } else if (graphicsDriver.equals("wrapper")) {
-            adrenoToolsDriverId = (selectedDriverVersion.contains("System")) ? "" : "adrenotools-" + selectedDriverVersion;
+            adrenoToolsDriverId = (selectedDriverVersion.contains("System")) ? "" : selectedDriverVersion;
             Log.d("GraphicsDriverExtraction", "Adrenotools DriverID: " + adrenoToolsDriverId);
         }
 

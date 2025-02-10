@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 import com.winlator.R;
 import com.winlator.container.Container;
 import com.winlator.container.ContainerManager;
+import com.winlator.contents.AdrenotoolsManager;
 import com.winlator.contents.ContentProfile;
 import com.winlator.contents.ContentsManager;
 import com.winlator.core.AppUtils;
@@ -160,6 +161,10 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
                 }
             }
         }
+        
+        // Add installed versions from AdrenotoolsManager
+        AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(context);
+        wrapperVersions.addAll(adrenotoolsManager.enumarateInstalledDrivers());
 
         // Set the adapter and select the initial version
         ArrayAdapter<String> turnipAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, turnipVersions);

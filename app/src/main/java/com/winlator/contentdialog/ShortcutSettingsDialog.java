@@ -412,18 +412,6 @@ public class ShortcutSettingsDialog extends ContentDialog {
             }
         });
     }
-
-    private void updateGraphicsDriverVersionText() {
-        // Retrieve the shortcut-specific graphics driver version
-        String turnipVersion = shortcut.getExtra("turnipGraphicsDriverVersion", shortcut.container.getTurnipGraphicsDriverVersion());
-        String wrapperVersion = shortcut.getExtra("wrapperGraphicsDriverVersion", shortcut.container.getWrapperGraphicsDriverVersion());
-        String graphicsDriver = shortcut.getExtra("graphicsDriver", shortcut.container.getGraphicsDriver());
-        
-        if(graphicsDriver.contains("turnip"))
-            tvGraphicsDriverVersion.setText(turnipVersion);
-        else
-            tvGraphicsDriverVersion.setText(wrapperVersion);
-    }
     
     private void updateGraphicsDriverVersionText(String version) {
         tvGraphicsDriverVersion.setText(version);
