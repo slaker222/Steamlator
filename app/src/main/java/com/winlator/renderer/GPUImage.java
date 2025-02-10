@@ -28,6 +28,20 @@ public class GPUImage extends Texture {
             System.err.println("Error: Failed to create hardware buffer");
         }
     }
+    
+    public GPUImage(int socketFd) {
+        hardwareBufferPtr = hardwareBufferFromSocket(socketFd);
+        if (hardwareBufferPtr != 0) {
+            virtualData = lockHardwareBuffer(hardwareBufferPtr);
+            if (virtualData == null) {
+                System.err.println("Error: Failed to lock hardware buffer");
+                destroyHardwareBuffer(hardwareBufferPtr);
+                hardwareBufferPtr = 0;
+            }
+        } else {
+            System.err.println("Error: Failed to create hardware buffer");
+        }
+    }
 
     @Override
     public void allocateTexture(short width, short height, ByteBuffer data) {
@@ -88,6 +102,8 @@ public class GPUImage extends Texture {
         gpuImage.destroy();
     }
 
+    private native long hardwareBufferFromSocket(int fd);
+    
     private native long createHardwareBuffer(short width, short height);
 
     private native void destroyHardwareBuffer(long hardwareBufferPtr);

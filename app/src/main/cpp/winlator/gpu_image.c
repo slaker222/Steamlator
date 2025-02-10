@@ -10,6 +10,7 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #include <jni.h>
+#include <unistd.h>
 #include <string.h>
 
 #define LOG_TAG "System.out"
@@ -84,6 +85,25 @@ AHardwareBuffer* createHardwareBuffer(int width, int height) {
     }
 
     return hardwareBuffer;
+}
+
+// JNI method to extract a hardware buffer from a socketpair
+JNIEXPORT jlong JNICALL
+Java_com_winlator_renderer_GPUImage_hardwareBufferFromSocket(JNIEnv *env, jclass obj, jint fd) {
+    AHardwareBuffer *ahb;
+    
+    uint8_t buf = 1;
+    if ((write(fd, &buf, 1)) == -1) {
+        printf("Failed to write data to socketpair");
+        return 0;
+    }
+    
+    if ((AHardwareBuffer_recvHandleFromUnixSocket(fd, &ahb)) != 0) {
+        printf("Failed to extract hardware buffer from socketpair");
+        return 0;
+    }
+    
+    return (jlong)ahb;
 }
 
 // JNI method to create a hardware buffer

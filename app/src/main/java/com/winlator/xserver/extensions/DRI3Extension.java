@@ -2,6 +2,7 @@ package com.winlator.xserver.extensions;
 
 import android.hardware.HardwareBuffer;
 import android.util.Log;
+import com.winlator.renderer.GPUImage;
 import static com.winlator.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
 
 import com.winlator.core.Callback;
@@ -133,7 +134,7 @@ public class DRI3Extension implements Extension {
         long size = (long)stride * height;
         if (modifiers == 1255) {
             Log.d("Dri3", "AHARDWAREBUFFER_SOCKET_FD");
-            pixmapFromBuffer(client, pixmapId, width, height, stride, offset, depth, fd, size);
+            pixmapFromHardwareBuffer(client, pixmapId, width, height, depth, fd);
         }
         
         else if (modifiers == 1274) {
@@ -142,15 +143,11 @@ public class DRI3Extension implements Extension {
         }    
     }
     
-    private void pixmapFromBuffer(XClient client, int pixmapId, short width, short height, int stride, int offset, byte depth, int fd, long size) throws IOException, XRequestError {
+    private void pixmapFromHardwareBuffer(XClient client, int pixmapId, short width, short height, byte depth, int fd) throws IOException, XRequestError {
         try {
-            long hardwareBufferPtr = hardwareBufferFromSocket(fd);
-            ByteBuffer byteBuffer = hardwareBufferToBuffer(hardwareBufferPtr);
-            if (byteBuffer == null) throw new BadAlloc();
-            short totalWidth = (short)(getHardwareBufferStride(hardwareBufferPtr));
-            Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, totalWidth, (short)getHardwareBufferHeight(hardwareBufferPtr), depth);
-            drawable.setData(byteBuffer);
-            drawable.setTexture(null);
+            Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, width, height, depth);
+            GPUImage gpuImage = new GPUImage(fd);
+            drawable.setTexture(gpuImage);
             drawable.setOnDestroyListener(onDestroyDrawableListener);
             client.xServer.pixmapManager.createPixmap(drawable);
         }
@@ -163,7 +160,7 @@ public class DRI3Extension implements Extension {
         try {
             ByteBuffer buffer = SysVSharedMemory.mapSHMSegment(fd, size, offset, true);
             if (buffer == null) throw new BadAlloc();
-
+            
             short totalWidth = (short)(stride / 4);
             Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, totalWidth, height, depth);
             drawable.setData(buffer);
@@ -202,15 +199,4 @@ public class DRI3Extension implements Extension {
                 throw new BadImplementation();
         }
     }
-    
-    private native long hardwareBufferFromSocket(int fd);
-    private native ByteBuffer hardwareBufferToBuffer(long ptr);
-    private native int getHardwareBufferStride(long ptr);
-    private native int getHardwareBufferHeight(long ptr);
-    private native int getHardwareBufferWidth(long ptr);
-    
-    static {
-        System.loadLibrary("winlator");
-    }
 }
-;

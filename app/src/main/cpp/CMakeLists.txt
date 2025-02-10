@@ -18,7 +18,6 @@ add_library(winlator SHARED
         xr/main.c
         xr/math.c
         xr/renderer.c
-        winlator/dri3.c
         winlator/drawable.c
         winlator/gpu_image.c
         winlator/sysvshared_memory.c
