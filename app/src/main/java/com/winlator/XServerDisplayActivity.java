@@ -2423,11 +2423,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
                 adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
             }    
-        }    
+        }
+        
+        extractZinkDlls(changed);
     }
-
-
-
 
     private void copyDirectory(File sourceDir, File destinationDir) throws IOException {
         if (!destinationDir.exists()) {
@@ -2703,19 +2702,22 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             AppUtils.restartApplication(this, R.id.main_menu_settings);
         }));
     }
-
-
+    
+    private void extractZinkDlls(boolean status) {
+        final String[] dlls = {"opengl32"};
+        File rootDir = imageFs.getRootDir();
+        File windowsDir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows");
+        
+        restoreOriginalDllFiles(dlls);
+        
+        if (container.isBionic() && (graphicsDriver.contains("turnip") || graphicsDriver.contains("wrapper"))) 
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_dlls.tzst", windowsDir, onExtractFileListener);
+    }
 
     private static final String TAG = "DXWrapperExtraction";
 
     private void extractDXWrapperFiles(String dxwrapper) {
         final String[] dlls = {"d3d10.dll", "d3d10_1.dll", "d3d10core.dll", "d3d11.dll", "d3d12.dll", "d3d12core.dll", "d3d8.dll", "d3d9.dll", "dxgi.dll", "ddraw.dll"};
-
-        // Log first boot check and DX wrapper type
-        if (firstTimeBoot && !dxwrapper.equals("vkd3d")) {
-            Log.d(TAG, "First boot detected, restoring original DLL files for " + dxwrapper);
-            cloneOriginalDllFiles(dlls);
-        }
 
         File rootDir = imageFs.getRootDir();
         File windowsDir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows");
@@ -2814,7 +2816,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             JSONObject wincomponentsJSONObject = new JSONObject(FileUtils.readString(this, "wincomponents/wincomponents.json"));
             ArrayList<String> dlls = new ArrayList<>();
             String wincomponents = shortcut != null ? shortcut.getExtra("wincomponents", container.getWinComponents()) : container.getWinComponents();
-
+            
             if (firstTimeBoot) {
                 for (String[] wincomponent : new KeyValueSet(wincomponents)) {
                     JSONArray dlnames = wincomponentsJSONObject.getJSONArray(wincomponent[0]);
@@ -2854,54 +2856,58 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
         catch (JSONException e) {}
     }
-
+    
     private void restoreOriginalDllFiles(final String... dlls) {
         File rootDir = imageFs.getRootDir();
-        File cacheDir = new File(rootDir, ImageFs.CACHE_PATH+"/original_dlls");
-        if (cacheDir.isDirectory()) {
-            File windowsDir = new File(rootDir, ImageFs.WINEPREFIX+"/drive_c/windows");
-            String[] dirnames = cacheDir.list();
-            int filesCopied = 0;
-
-            for (String dll : dlls) {
-                boolean success = false;
-                for (String dirname : dirnames) {
-                    File srcFile = new File(cacheDir, dirname+"/"+dll);
-                    File dstFile = new File(windowsDir, dirname+"/"+dll);
-                    if (FileUtils.copy(srcFile, dstFile)) success = true;
-                }
-                if (success) filesCopied++;
-            }
-
-            if (filesCopied == dlls.length) return;
-        }
-
-        containerManager.extractContainerPatternFile(container, container.getWineVersion(), container.getRootDir(), (file, size) -> {
-            String path = file.getPath();
-            if (path.contains("system32/") || path.contains("syswow64/")) {
-                for (String dll : dlls) {
-                    if (path.endsWith("system32/"+dll) || path.endsWith("syswow64/"+dll)) return file;
-                }
-            }
-            return null;
-        });
-
-        cloneOriginalDllFiles(dlls);
-    }
-
-    private void cloneOriginalDllFiles(final String... dlls) {
-        File rootDir = imageFs.getRootDir();
-        File cacheDir = new File(rootDir, ImageFs.CACHE_PATH+"/original_dlls");
-        if (!cacheDir.isDirectory()) cacheDir.mkdirs();
         File windowsDir = new File(rootDir, ImageFs.WINEPREFIX+"/drive_c/windows");
-        String[] dirnames = {"system32", "syswow64"};
-
+        File system32dlls = null;
+        File syswow64dlls = null;
+        
+        if (container.isBionic()) 
+            system32dlls = new File(rootDir, "opt/wine.bionic/lib/wine/aarch64-windows");
+        else
+            system32dlls = new File(rootDir, "opt/wine.bionic/lib/wine/x86_64-windows");
+        syswow64dlls = new File(rootDir, "opt/wine.glibc/lib/wine/i386-windows");
+        int filesCopied = 0;
+        
         for (String dll : dlls) {
-            for (String dirname : dirnames) {
-                File dllFile = new File(windowsDir, dirname+"/"+dll);
-                if (dllFile.isFile()) FileUtils.copy(dllFile, new File(cacheDir, dirname+"/"+dll));
-            }
-        }
+            boolean success = false;    
+            File srcFile = new File(system32dlls, dll);
+            File dstFile = new File(windowsDir, "system32/" + dll);
+            success = FileUtils.copy(srcFile, dstFile);
+            srcFile = new File(syswow64dlls, dll);
+            dstFile = new File(windowsDir, "syswow64/" + dll);
+            if (success && FileUtils.copy(srcFile, dstFile)) 
+                filesCopied++;
+         }
+        
+         if (filesCopied == dlls.length) return;
+        
+         containerManager.extractContainerPatternFile(container, container.getWineVersion(), container.getRootDir(), (file, size) -> {
+             String path = file.getPath();
+             if (path.contains("system32/") || path.contains("syswow64/")) {
+                 for (String dll : dlls) {
+                     if (path.endsWith("system32/"+dll) || path.endsWith("syswow64/"+dll)) return file;
+                 }
+             }
+             return null;
+         });
+         cloneOriginalDllFiles(dlls);
+   }
+    
+   private void cloneOriginalDllFiles(final String... dlls) {
+       File rootDir = imageFs.getRootDir();
+       File cacheDir = new File(rootDir, ImageFs.CACHE_PATH+"/original_dlls");
+       if (!cacheDir.isDirectory()) cacheDir.mkdirs();
+       File windowsDir = new File(rootDir, ImageFs.WINEPREFIX+"/drive_c/windows");
+       String[] dirnames = {"system32", "syswow64"};
+
+       for (String dll : dlls) {
+           for (String dirname : dirnames) {
+               File dllFile = new File(windowsDir, dirname+"/"+dll);
+               if (dllFile.isFile()) FileUtils.copy(dllFile, new File(cacheDir, dirname+"/"+dll));
+           }
+       }
     }
 
     private boolean isGenerateWineprefix() {
