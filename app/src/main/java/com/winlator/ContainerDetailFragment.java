@@ -91,8 +91,8 @@ public class ContainerDetailFragment extends Fragment {
     private JSONArray gpuCards;
     private Callback<String> openDirectoryCallback;
 
-    private String turnipGraphicsDriverVersion;
-    private String wrapperGraphicsDriverVersion;
+    private String turnipGraphicsDriverVersion = "";
+    private String wrapperGraphicsDriverVersion = "";
 
     private String tempGraphicsDriverVersion; // Temporary storage for the graphics driver version
 
@@ -597,8 +597,8 @@ public class ContainerDetailFragment extends Fragment {
                 String screenSize = getScreenSize(view);
                 String envVars = envVarsView.getEnvVars();
                 String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
-                String turnipGraphicsDriverVersion = (this.turnipGraphicsDriverVersion != null) ? this.turnipGraphicsDriverVersion : DefaultVersion.TURNIP; // Use the selected version or default
-                String wrapperGraphicsDriverVersion = (this.wrapperGraphicsDriverVersion != null) ? this.wrapperGraphicsDriverVersion : "System"; // Use the selected version or default
+                String turnipGraphicsDriverVersion = (this.turnipGraphicsDriverVersion != "") ? this.turnipGraphicsDriverVersion : DefaultVersion.TURNIP; // Use the selected version or default
+                String wrapperGraphicsDriverVersion = (this.wrapperGraphicsDriverVersion != "") ? this.wrapperGraphicsDriverVersion : DefaultVersion.WRAPPER; // Use the selected version or default
                 String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
                 String dxwrapperConfig = vDXWrapperConfig.getTag().toString();
                 String audioDriver = StringUtils.parseIdentifier(sAudioDriver.getSelectedItem());
@@ -687,10 +687,12 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("cpuList", cpuList);
                     data.put("cpuListWoW64", cpuListWoW64);
                     data.put("graphicsDriver", graphicsDriver);
+                    
                     if (graphicsDriver.contains("turnip"))    
-                        data.put("turnipGraphicsDriverVersion", getGraphicsDriverVersion());
+                        data.put("turnipGraphicsDriverVersion", getTurnipGraphicsDriverVersion());
                     else if (graphicsDriver.contains("wrapper"))   
-                        data.put("wrapperGraphicsDriverVersion", getGraphicsDriverVersion());
+                        data.put("wrapperGraphicsDriverVersion", getWrapperGraphicsDriverVersion());
+                        
                     data.put("dxwrapper", dxwrapper);
                     data.put("dxwrapperConfig", dxwrapperConfig);
                     data.put("audioDriver", audioDriver);
@@ -931,9 +933,9 @@ public class ContainerDetailFragment extends Fragment {
     private void showGraphicsDriverConfigDialog(View anchor, String graphicsDriver) {
         String graphicsDriverVersion;
         if (graphicsDriver.contains("turnip"))
-            graphicsDriverVersion = turnipGraphicsDriverVersion;
+            graphicsDriverVersion = (turnipGraphicsDriverVersion != "") ? turnipGraphicsDriverVersion : DefaultVersion.TURNIP;
         else
-            graphicsDriverVersion = wrapperGraphicsDriverVersion;
+            graphicsDriverVersion = (wrapperGraphicsDriverVersion != "") ? wrapperGraphicsDriverVersion : DefaultVersion.WRAPPER;
              
         // Create a new GraphicsDriverConfigDialog
         new GraphicsDriverConfigDialog(anchor, graphicsDriverVersion, graphicsDriver, manager,  (version) -> {
@@ -1242,19 +1244,13 @@ public class ContainerDetailFragment extends Fragment {
 //        // Rest of the method...
 //    }
     
-    public String getGraphicsDriverVersion() {
-        // Use the tempGraphicsDriverVersion if it has been modified, otherwise use the container's version
-        String graphicsDriver = (container != null) ? container.getGraphicsDriver() : null;
-        if (graphicsDriver != null) {
-            if (graphicsDriver.contains("turnip"))
-                return (turnipGraphicsDriverVersion != null) ? turnipGraphicsDriverVersion : container.getTurnipGraphicsDriverVersion();
-            else
-                return (wrapperGraphicsDriverVersion != null) ? wrapperGraphicsDriverVersion : container.getWrapperGraphicsDriverVersion();
-        }
-        else
-            return null;
+    public String getTurnipGraphicsDriverVersion() {
+        return turnipGraphicsDriverVersion;
     }
-
+    
+    public String getWrapperGraphicsDriverVersion() {
+        return wrapperGraphicsDriverVersion;
+    }
 
     public String getControllerMapping(View view) {
         //The order has to be the same like Container.XrControllerMapping

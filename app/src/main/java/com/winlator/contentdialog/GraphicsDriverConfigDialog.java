@@ -174,6 +174,10 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
             sVersion.setAdapter(turnipAdapter);
         else
             sVersion.setAdapter(wrapperAdapter);
+        
+        // We can start logging selected graphics driver and initial version
+        Log.d(TAG, "Graphics driver: " + graphicsDriver);
+        Log.d(TAG, "Initial version: " + initialVersion);
 
         // Use the custom selection logic
         boolean found = setSpinnerSelectionWithFallback(sVersion, initialVersion);
@@ -186,9 +190,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
                 AppUtils.setSpinnerSelectionFromValue(sVersion, wrapperDefaultVersions[0]);
         }
 
-        // Log the selection process to identify mismatches
-        Log.d(TAG, "Graphics driver: " + graphicsDriver);
-        Log.d(TAG, "Initial version: " + initialVersion);
+        // We can log the spinner values now
         Log.d(TAG, "Spinner selected position: " + sVersion.getSelectedItemPosition());
         Log.d(TAG, "Spinner selected value: " + sVersion.getSelectedItem());
     }
