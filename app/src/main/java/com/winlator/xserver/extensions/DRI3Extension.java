@@ -147,7 +147,8 @@ public class DRI3Extension implements Extension {
         try {
             Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, width, height, depth);
             GPUImage gpuImage = new GPUImage(fd);
-            drawable.setTexture(gpuImage);
+            drawable.setData(gpuImage.getVirtualData());
+            drawable.setTexture(null);
             drawable.setOnDestroyListener(onDestroyDrawableListener);
             client.xServer.pixmapManager.createPixmap(drawable);
         }
