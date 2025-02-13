@@ -211,9 +211,8 @@ public final class FEXCoreManager {
             writeToConfigFile(preset, multiBlockValue, x87ReducedPrecisionValue);
         }
         else {
-            if (!spinnersCurrentSelection.get(0).contains(preset) || !spinnersCurrentSelection.get(1).contains(multiBlockValue) || !spinnersCurrentSelection.get(2).contains(x87ReducedPrecisionValue)) {
+            if (!spinnersCurrentSelection.get(0).equals(preset) || !spinnersCurrentSelection.get(1).equals(multiBlockValue) || !spinnersCurrentSelection.get(2).equals(x87ReducedPrecisionValue)) {
                 writeToConfigFile(preset, multiBlockValue,x87ReducedPrecisionValue);
-                
             }
         }
         spinnersCurrentSelection.clear();     
