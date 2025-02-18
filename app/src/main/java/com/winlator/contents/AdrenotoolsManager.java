@@ -35,7 +35,8 @@ public class AdrenotoolsManager {
     public AdrenotoolsManager(Context context) {
         this.mContext = context;
         this.adrenotoolsContentDir = new File(mContext.getFilesDir(), "imagefs/contents/adrenotools");
-        
+        if (!adrenotoolsContentDir.exists())
+            adrenotoolsContentDir.mkdirs();
     }
         
     public String getLibraryName(String adrenoToolsDriverId) {
