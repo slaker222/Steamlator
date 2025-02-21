@@ -1,8 +1,5 @@
 package com.winlator.fexcore;
 
-import android.util.Log;
-import com.google.gson.Gson;
-import com.google.gson.internal.LinkedTreeMap;
 import com.winlator.R;
 
 import android.content.Context;
@@ -11,9 +8,7 @@ import com.winlator.container.Shortcut;
 import android.widget.ArrayAdapter;
 import android.widget.SimpleCursorAdapter;
 import android.widget.Spinner;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import android.util.Log;
 import com.winlator.ShortcutsFragment;
 import com.winlator.container.Container;
 import com.winlator.core.FileUtils;
@@ -33,38 +28,36 @@ public final class FEXCoreManager {
     
     private static File configFile;
     private static List<String> tsoPresets;
+    private static List<String> x87modePresets;
+    private static List<String> multiblockValues;
     private static ImageFs imageFS;
-    private static List<String> values;
-    private static ArrayList<String> spinnersCurrentSelection = new ArrayList<>();
+    
     
     FEXCoreManager() {
     }
     
-    private static String presetFromTSOValues(String tsoEnabled, String vectorTsoEnabled, String memcpysetTSOEnabled, String halfbarrierTSOEnabled, String paranoidTSO) {
+    private static String presetFromTSOValues(String tsoEnabled, String vectorTSOEnabled, String memcpySetTSOEnabled, String halfbarrierTSOEnabled) {
         String ret;
         
-        if (tsoEnabled.contains("1")) {
-            if (vectorTsoEnabled.contains("1")) {
-                if (paranoidTSO.contains("1"))
-                    ret = "Slowest";
-                else
-                    ret = "Slow";
-            }
+        if (halfbarrierTSOEnabled.equals("1")) {
+            if (vectorTSOEnabled.equals("1")) 
+                ret = "Slow";
             else
                 ret = "Fast";
         }
-        else
+        else 
             ret = "Disabled";
         
         return ret;
     }
     
-    private static void writeToConfigFile(String tsoPreset, String mblockValue, String X87ReducedPrecisionValue) {
+    private static void writeToConfigFile(String tsoPreset, String mblockValue, String x87ModePreset) {
         String tsoEnabled = "0";
-        String vectorTSOEnabled = "0" ;
+        String X87ReducedPrecisionValue = "1";
+        String vectorTSOEnabled = "0";
+        String multiblockValue = "1";
         String memcpysetTSOEnabled = "0";
         String halfbarrierTSOEnabled = "0";
-        String paranoidTSO = "0";
         
         switch (tsoPreset) {
             case "Disabled":
@@ -72,41 +65,48 @@ public final class FEXCoreManager {
                 vectorTSOEnabled = "0";
                 memcpysetTSOEnabled = "0";
                 halfbarrierTSOEnabled = "0";
-                paranoidTSO = "0";
                 break;
             case "Fast":
-                tsoEnabled = "1";
+                tsoEnabled = "0";
                 vectorTSOEnabled = "0";
                 memcpysetTSOEnabled = "0";
-                halfbarrierTSOEnabled = "0";
-                paranoidTSO = "0";
+                halfbarrierTSOEnabled = "1";
                 break;
             case "Slow":
                 tsoEnabled = "1";
                 vectorTSOEnabled = "1";
                 memcpysetTSOEnabled = "1";
                 halfbarrierTSOEnabled = "1";
-                paranoidTSO = "0";
                 break;
-            case "Slowest":
-                tsoEnabled = "1";
-                vectorTSOEnabled = "1";
-                memcpysetTSOEnabled = "1";
-                halfbarrierTSOEnabled = "1";
-                paranoidTSO = "1";
+        }
+        
+        switch(x87ModePreset) {
+            case "Fast":
+               X87ReducedPrecisionValue = "1";
+               break;
+            case "Slow":
+               X87ReducedPrecisionValue = "0";
+               break;
+        }
+        
+        switch (mblockValue) {
+            case "Enabled":
+                multiblockValue = "1";
+                break;
+            case "Disabled":
+                multiblockValue = "0";
                 break;
         }
         
         try {
             JSONObject config = new JSONObject();
             JSONObject opts = new JSONObject()
-                .put("Multiblock", mblockValue)
+                .put("Multiblock", multiblockValue)
                 .put("TSOEnabled", tsoEnabled)
                 .put("VectorTSOEnabled", vectorTSOEnabled)
                 .put("MemcpySetTSOEnabled", memcpysetTSOEnabled)
                 .put("HalfBarrierTSOEnabled", halfbarrierTSOEnabled)
-                .put("X87ReducedPrecision", X87ReducedPrecisionValue)
-                .put("ParanoidTSO", paranoidTSO);
+                .put("X87ReducedPrecision", X87ReducedPrecisionValue);
             config.put("Config", opts);
             String json = config.toString();
             FileUtils.writeString(configFile, json);
@@ -116,105 +116,86 @@ public final class FEXCoreManager {
         } 
     }
     
-    private static String readFromConfigFile(String option) {
-        String ret = "";
-        
+    private static void setFromConfigFile(Spinner tsoModeSpinner, Spinner x87modeSpinner, Spinner multiBlockSpinner) {
         try {
-            Gson gson = new Gson();
-            HashMap<String, LinkedTreeMap<String, String>> jsonMap = gson.fromJson(new FileReader(configFile), HashMap.class);
-            
-            LinkedTreeMap<String, String> optionsMap = jsonMap.get("Config");
-           
-            ret = optionsMap.get(option);
+            JSONObject jobj = new JSONObject(FileUtils.readString(configFile));
+            JSONObject config = jobj.getJSONObject("Config");
+            String tsoPreset = presetFromTSOValues(config.getString("TSOEnabled"), config.getString("VectorTSOEnabled"), config.getString("MemcpySetTSOEnabled"), config.getString("HalfBarrierTSOEnabled"));
+            selectSpinnerItemByValue(tsoModeSpinner, tsoPresets, tsoPreset);
+            String x87mode = (config.getString("X87ReducedPrecision").equals("1")) ? "Fast" : "Slow";
+            selectSpinnerItemByValue(x87modeSpinner, x87modePresets, x87mode);
+            String multiBlockValue = (config.getString("Multiblock").equals("1")) ? "Enabled" : "Disabled";
+            selectSpinnerItemByValue(multiBlockSpinner, multiblockValues, multiBlockValue);
         }
-        catch (IOException e) {
+        catch (JSONException e) {
             throw new RuntimeException(e);
         }
-        
-        return ret;
-        
     }
+    
+   private static void setFromDefaults(Spinner tsoModeSpinner, Spinner x87modeSpinner, Spinner multiBlockSpinner) {
+       selectSpinnerItemByValue(tsoModeSpinner, tsoPresets, "Disabled");
+       selectSpinnerItemByValue(x87modeSpinner, x87modePresets, "Fast");
+       selectSpinnerItemByValue(multiBlockSpinner, multiblockValues, "Enabled");    
+        
+   }
     
    private static void selectSpinnerItemByValue(Spinner spnr, List<String> values, String value) {
         int position = values.indexOf(value);
         spnr.setSelection(position);
+        
     }
     
-    public static void loadFEXCoreSpinners(Context ctx, Container container, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ReducedPrecisionSpinner) {
+    public static void loadFEXCoreSpinners(Context ctx, Container container, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ModeSpinner) {
         File imageFsRoot = new File(ctx.getFilesDir(), "imagefs");
         imageFS = ImageFs.find(imageFsRoot);
-        String tsoPresetValue = "";
-        String multiBlockValue = "";
-        String X87ReducedPrecisionValue = "";
         ContainerManager containerManager = new ContainerManager(ctx);
         
-        tsoPresets = new ArrayList<>(Arrays.asList(ctx.getResources().getStringArray(R.array.fexcore_presets_entries)));
-        values = new ArrayList<>(Arrays.asList(ctx.getResources().getStringArray(R.array.TwoInt_values)));
+        tsoPresets = new ArrayList<>(Arrays.asList(ctx.getResources().getStringArray(R.array.fexcore_preset_entries)));
+        x87modePresets = new ArrayList<>(Arrays.asList(ctx.getResources().getStringArray(R.array.x87mode_preset_entries)));
+        multiblockValues = new ArrayList<>(Arrays.asList(ctx.getResources().getStringArray(R.array.multiblock_values)));
         
         fexcoreTSOSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, tsoPresets));
-        fexcoreMultiblockSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, values));
-        fexcoreX87ReducedPrecisionSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, values));
+        fexcoreMultiblockSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, multiblockValues));
+        fexcoreX87ModeSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, x87modePresets));
         
         if (container != null) 
             configFile = new File(imageFS.home_path + "-" + container.id + "/.fex-emu/Config.json");
         else
             configFile = new File(imageFS.home_path + "-" + containerManager.getNextContainerId() + "/.fex-emu/Config.json");
             
-        tsoPresetValue = (configFile != null && configFile.exists()) ? presetFromTSOValues(readFromConfigFile("TSOEnabled"), readFromConfigFile("VectorTSOEnabled"), readFromConfigFile("MemcpySetTsoEnabled"), readFromConfigFile("HalfBarrierTSOEnabled"), readFromConfigFile("ParanoidTSO")) : "Disabled";
-        multiBlockValue = (configFile != null && configFile.exists()) ? readFromConfigFile("Multiblock") : "1";
-        X87ReducedPrecisionValue = (configFile != null && configFile.exists()) ? readFromConfigFile("X87ReducedPrecision") : "1";
+        if (configFile != null && configFile.exists())
+            setFromConfigFile(fexcoreTSOSpinner, fexcoreX87ModeSpinner, fexcoreMultiblockSpinner);
+        else
+            setFromDefaults(fexcoreTSOSpinner, fexcoreX87ModeSpinner, fexcoreMultiblockSpinner);
         
-        selectSpinnerItemByValue(fexcoreTSOSpinner, tsoPresets, tsoPresetValue);
-        selectSpinnerItemByValue(fexcoreMultiblockSpinner, values, multiBlockValue);
-        selectSpinnerItemByValue(fexcoreX87ReducedPrecisionSpinner, values, X87ReducedPrecisionValue);
-        
-        spinnersCurrentSelection.add((String)fexcoreTSOSpinner.getSelectedItem());
-        spinnersCurrentSelection.add((String)fexcoreMultiblockSpinner.getSelectedItem());
-        spinnersCurrentSelection.add((String)fexcoreX87ReducedPrecisionSpinner.getSelectedItem());
     }
     
-    public static void loadFEXCoreSpinners(Context ctx, Shortcut shortcut, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ReducedPrecisionSpinner) {
+    public static void loadFEXCoreSpinners(Context ctx, Shortcut shortcut, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ModeSpinner) {
         File imageFsRoot = new File(ctx.getFilesDir(), "imagefs");
         imageFS = ImageFs.find(imageFsRoot);
-        String tsoPresetValue = "";
-        String multiBlockValue = "";
-        String X87ReducedPrecisionValue = "";
         
-        tsoPresets = new ArrayList<>(Arrays.asList(ctx.getResources().getStringArray(R.array.fexcore_presets_entries)));
-        values = new ArrayList<>(Arrays.asList(ctx.getResources().getStringArray(R.array.TwoInt_values)));
+        
+        tsoPresets = new ArrayList<>(Arrays.asList(ctx.getResources().getStringArray(R.array.fexcore_preset_entries)));
+        x87modePresets = new ArrayList<>(Arrays.asList(ctx.getResources().getStringArray(R.array.x87mode_preset_entries)));
+        multiblockValues = new ArrayList<>(Arrays.asList(ctx.getResources().getStringArray(R.array.multiblock_values)));
         
         fexcoreTSOSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, tsoPresets));
-        fexcoreMultiblockSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, values));
-        fexcoreX87ReducedPrecisionSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, values));
+        fexcoreMultiblockSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, multiblockValues));
+        fexcoreX87ModeSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, x87modePresets));
         
          configFile = new File(imageFS.home_path + "-" + shortcut.container.id + "/.fex-emu/AppConfig/" + shortcut.getExecutable() + ".json");
             
-        tsoPresetValue = (configFile != null && configFile.exists()) ? presetFromTSOValues(readFromConfigFile("TSOEnabled"), readFromConfigFile("VectorTSOEnabled"), readFromConfigFile("MemcpySetTsoEnabled"), readFromConfigFile("HalfBarrierTSOEnabled"), readFromConfigFile("ParanoidTSO")) : "Disabled";
-        multiBlockValue = (configFile != null && configFile.exists()) ? readFromConfigFile("Multiblock") : "1";
-        X87ReducedPrecisionValue = (configFile != null && configFile.exists()) ? readFromConfigFile("X87ReducedPrecision") : "1";
+        setFromConfigFile(fexcoreTSOSpinner, fexcoreX87ModeSpinner, fexcoreMultiblockSpinner);
         
-        selectSpinnerItemByValue(fexcoreTSOSpinner, tsoPresets, tsoPresetValue);
-        selectSpinnerItemByValue(fexcoreMultiblockSpinner, values, multiBlockValue);
-        selectSpinnerItemByValue(fexcoreX87ReducedPrecisionSpinner, values, X87ReducedPrecisionValue);
-        
-        spinnersCurrentSelection.add((String)fexcoreTSOSpinner.getSelectedItem());
-        spinnersCurrentSelection.add((String)fexcoreMultiblockSpinner.getSelectedItem());
-        spinnersCurrentSelection.add((String)fexcoreX87ReducedPrecisionSpinner.getSelectedItem());
     }
     
-    public static void saveFEXCoreSpinners(Container container, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ReducedPrecisionSpinner) {
+    public static void saveFEXCoreSpinners(Container container, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ModeSpinner) {
         String preset = (String)fexcoreTSOSpinner.getSelectedItem();
         String multiBlockValue = (String)fexcoreMultiblockSpinner.getSelectedItem();
-        String x87ReducedPrecisionValue = (String)fexcoreX87ReducedPrecisionSpinner.getSelectedItem();
-        if (!configFile.exists()) {
+        String x87ReducedPrecisionValue = (String)fexcoreX87ModeSpinner.getSelectedItem();
+        if (!configFile.exists())
             configFile.getParentFile().mkdirs();
-            writeToConfigFile(preset, multiBlockValue, x87ReducedPrecisionValue);
-        }
-        else {
-            if (!spinnersCurrentSelection.get(0).equals(preset) || !spinnersCurrentSelection.get(1).equals(multiBlockValue) || !spinnersCurrentSelection.get(2).equals(x87ReducedPrecisionValue)) {
-                writeToConfigFile(preset, multiBlockValue,x87ReducedPrecisionValue);
-            }
-        }
-        spinnersCurrentSelection.clear();     
+       writeToConfigFile(preset, multiBlockValue, x87ReducedPrecisionValue);
+        
     }
 }

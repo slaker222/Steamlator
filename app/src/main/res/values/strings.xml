@@ -574,8 +574,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="pref_summary_requiresIntercepting">Requires intercepting system shortcuts with Dex mode or with Accessibility service</string>
     <string name="pref_summary_requiresTrackpadAndNative">Requires "Touchscreen input mode" to be "Trackpad" and "Display resolution mode" to be not "native"</string>
     <string name="fexcore_config">FEXCore</string>
-    <string name="fexcore_tso_preset">TSO</string>
-    <string name="fexcore_x87reduced_precision">X87ReducedPrecision</string>
+    <string name="fexcore_tso_preset">TSOMode</string>
+    <string name="fexcore_x87reduced_precision">X87Mode</string>
     <string name="fexcore_multiblock">MultiBlock</string>
     <string name="adrenotools_gpu_drivers">Adrenotools GPU Drivers</string>
     <string name="install_drivers">Install Drivers</string>

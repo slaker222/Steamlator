@@ -284,15 +284,18 @@
         <item>reverse portrait</item>
         <item>reverse landscape</item>
     </string-array>
-    <string-array name="fexcore_presets_entries">
+    <string-array name="fexcore_preset_entries">
         <item>Disabled</item>
         <item>Fast</item>
         <item>Slow</item>
-        <item>Slowest</item>
     </string-array>
-    <string-array name="TwoInt_values">
-        <item>0</item>
-        <item>1</item>
+    <string-array name="x87mode_preset_entries">
+        <item>Fast</item>
+        <item>Slow</item>
+    </string-array>
+    <string-array name="multiblock_values">
+        <item>Enabled</item>
+        <item>Disabled</item>
     </string-array>
 
 </resources>
