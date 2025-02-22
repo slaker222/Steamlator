@@ -135,14 +135,12 @@ public final class FEXCoreManager {
    private static void setFromDefaults(Spinner tsoModeSpinner, Spinner x87modeSpinner, Spinner multiBlockSpinner) {
        selectSpinnerItemByValue(tsoModeSpinner, tsoPresets, "Disabled");
        selectSpinnerItemByValue(x87modeSpinner, x87modePresets, "Fast");
-       selectSpinnerItemByValue(multiBlockSpinner, multiblockValues, "Enabled");    
-        
+       selectSpinnerItemByValue(multiBlockSpinner, multiblockValues, "Enabled");
    }
     
    private static void selectSpinnerItemByValue(Spinner spnr, List<String> values, String value) {
         int position = values.indexOf(value);
         spnr.setSelection(position);
-        
     }
     
     public static void loadFEXCoreSpinners(Context ctx, Container container, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ModeSpinner) {
@@ -167,7 +165,6 @@ public final class FEXCoreManager {
             setFromConfigFile(fexcoreTSOSpinner, fexcoreX87ModeSpinner, fexcoreMultiblockSpinner);
         else
             setFromDefaults(fexcoreTSOSpinner, fexcoreX87ModeSpinner, fexcoreMultiblockSpinner);
-        
     }
     
     public static void loadFEXCoreSpinners(Context ctx, Shortcut shortcut, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ModeSpinner) {
@@ -184,9 +181,11 @@ public final class FEXCoreManager {
         fexcoreX87ModeSpinner.setAdapter(new ArrayAdapter<>(ctx, android.R.layout.simple_spinner_dropdown_item, x87modePresets));
         
          configFile = new File(imageFS.home_path + "-" + shortcut.container.id + "/.fex-emu/AppConfig/" + shortcut.getExecutable() + ".json");
-            
-        setFromConfigFile(fexcoreTSOSpinner, fexcoreX87ModeSpinner, fexcoreMultiblockSpinner);
         
+        if (configFile != null && configFile.exists())
+            setFromConfigFile(fexcoreTSOSpinner, fexcoreX87ModeSpinner, fexcoreMultiblockSpinner);
+        else
+            setFromDefaults(fexcoreTSOSpinner, fexcoreX87ModeSpinner, fexcoreMultiblockSpinner);
     }
     
     public static void saveFEXCoreSpinners(Container container, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ModeSpinner) {
@@ -196,6 +195,5 @@ public final class FEXCoreManager {
         if (!configFile.exists())
             configFile.getParentFile().mkdirs();
        writeToConfigFile(preset, multiBlockValue, x87ReducedPrecisionValue);
-        
     }
 }
