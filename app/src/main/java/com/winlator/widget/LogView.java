@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 
 public class LogView extends View {
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -53,7 +54,6 @@ public class LogView extends View {
 
     public LogView(Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
-        FileUtils.delete(getLogFile());
         try {
             writer = new BufferedWriter(new FileWriter(getLogFile()));
         }
@@ -199,26 +199,12 @@ public class LogView extends View {
     }
 
     private static File getLogFile() {
-        File winlatorDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Winlator");
+        File winlatorDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Winlator/logs");
         winlatorDir.mkdirs();
-        return new File(winlatorDir, "log.txt");
+        String logFile = "log_" + DateFormat.format("yyyy-MM-dd_HH-mm-ss", new Date()) + ".txt";
+        return new File(winlatorDir, logFile);
     }
-    /*
-    public void exportToFile() {
-        final File logFile = getLogFile();
-        if (logFile.isFile()) logFile.delete();
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(logFile))) {
-            synchronized (lock) {
-                for (String line : lines) writer.write(line+"\n");
-            }
-
-            String path = logFile.getPath().substring(logFile.getPath().indexOf(Environment.DIRECTORY_DOWNLOADS));
-            Context context = getContext();
-            AppUtils.showToast(context, context.getString(R.string.logs_exported_to)+" "+path);
-        }
-        catch (IOException e) {}
-    }
-    */
+    
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         switch (event.getAction()) {
