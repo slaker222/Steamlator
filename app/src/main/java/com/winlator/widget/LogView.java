@@ -37,6 +37,7 @@ public class LogView extends View {
     private boolean scrollingHorizontally = false;
     private boolean scrollingVertically = false;
     private final Object lock = new Object();
+    private BufferedWriter writer;
 
     public LogView(Context context) {
         this(context, null);
@@ -53,6 +54,12 @@ public class LogView extends View {
     public LogView(Context context, @Nullable AttributeSet attrs, int defStyleAttr, int defStyleRes) {
         super(context, attrs, defStyleAttr, defStyleRes);
         FileUtils.delete(getLogFile());
+        try {
+            writer = new BufferedWriter(new FileWriter(getLogFile()));
+        }
+        catch(IOException e) {
+            throw new RuntimeException(e);
+        }   
     }
 
     @Override
@@ -68,7 +75,7 @@ public class LogView extends View {
         int height = getHeight();
 
         if (width == 0 || height == 0) return;
-
+        
         synchronized (lock) {
             paint.setStyle(Paint.Style.FILL);
 
@@ -86,6 +93,8 @@ public class LogView extends View {
             float textHeight = paint.getFontSpacing();
 
             float rowY = -scrollPosition.y;
+            
+            
             for (int i = 0, count = lines.size(); i < count; i++) {
                 if ((rowY + rowHeight) < 0 || rowY >= height) {
                     rowY += rowHeight;
@@ -100,7 +109,7 @@ public class LogView extends View {
                 canvas.drawText(lines.get(i), -scrollPosition.x, centerY, paint);
                 rowY += rowHeight;
             }
-
+             
             drawScrollThumbs(canvas);
         }
     }
@@ -176,8 +185,15 @@ public class LogView extends View {
 
     public void append(String line) {
         synchronized (lock) {
-            lines.add("["+DateFormat.format("HH:mm:ss", System.currentTimeMillis())+"]  "+line.replace("\n", ""));
-            computeScrollSize();
+            try {
+                lines.add("["+DateFormat.format("HH:mm:ss", System.currentTimeMillis())+"]  "+line.replace("\n", ""));
+                computeScrollSize();
+                writer.write(line + "\n");
+                writer.flush();
+            }
+            catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
         postInvalidate();
     }
@@ -185,9 +201,9 @@ public class LogView extends View {
     private static File getLogFile() {
         File winlatorDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "Winlator");
         winlatorDir.mkdirs();
-        return new File(winlatorDir, "logs.txt");
+        return new File(winlatorDir, "log.txt");
     }
-
+    /*
     public void exportToFile() {
         final File logFile = getLogFile();
         if (logFile.isFile()) logFile.delete();
@@ -202,7 +218,7 @@ public class LogView extends View {
         }
         catch (IOException e) {}
     }
-
+    */
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         switch (event.getAction()) {

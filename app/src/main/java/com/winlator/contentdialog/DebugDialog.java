@@ -36,7 +36,6 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
             paused = !paused;
             ((ImageButton)v).setImageResource(paused ? R.drawable.icon_play : R.drawable.icon_pause);
         });
-        toolbarView.findViewById(R.id.BTExport).setOnClickListener((v) -> logView.exportToFile());
         llBottomBarPanel.addView(toolbarView);
     }
 
