@@ -13,16 +13,22 @@ import com.winlator.core.AppUtils;
 import com.winlator.core.Callback;
 import com.winlator.core.UnitUtils;
 import com.winlator.widget.LogView;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 
 public class DebugDialog extends ContentDialog implements Callback<String> {
     private final LogView logView;
-    private boolean paused = false;
+    private static boolean paused = false;
+    private BufferedWriter writer;
 
     public DebugDialog(@NonNull Context context) {
         super(context, R.layout.debug_dialog);
         setIcon(R.drawable.icon_debug);
         setTitle(context.getString(R.string.logs));
         logView = findViewById(R.id.LogView);
+        
         logView.getLayoutParams().width = (int)UnitUtils.dpToPx(UnitUtils.pxToDp(AppUtils.getScreenWidth()) * 0.7f);
 
         findViewById(R.id.BTCancel).setVisibility(View.GONE);
@@ -37,10 +43,23 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
             ((ImageButton)v).setImageResource(paused ? R.drawable.icon_play : R.drawable.icon_pause);
         });
         llBottomBarPanel.addView(toolbarView);
+        try {
+            writer = new BufferedWriter(new FileWriter(logView.getLogFile()));
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
     public void call(final String line) {
         if (!paused) logView.append(line+"\n");
+        try {
+            writer.write(line + "\n");
+            writer.flush();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
