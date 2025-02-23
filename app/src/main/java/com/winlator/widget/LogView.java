@@ -195,7 +195,6 @@ public class LogView extends View {
                 throw new RuntimeException(e);
             }
         }
-        postInvalidate();
     }
 
     private static File getLogFile() {
