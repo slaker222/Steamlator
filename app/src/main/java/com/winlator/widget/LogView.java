@@ -13,6 +13,7 @@ import android.view.View;
 import androidx.annotation.Nullable;
 
 import com.winlator.R;
+import com.winlator.contentdialog.DebugDialog;
 import com.winlator.core.AppUtils;
 import com.winlator.core.FileUtils;
 import com.winlator.core.UnitUtils;
@@ -208,12 +209,14 @@ public class LogView extends View {
                     if (Math.abs(dy) > 10) scrollingVertically = true;
 
                     if (scrollingHorizontally) {
+                        DebugDialog.setPaused(true);
                         scrollPosition.x = Mathf.clamp(scrollPosition.x - dx, 0, getScrollMaxLeft());
                         lastPoint.set(event.getX(), event.getY());
                         invalidate();
                     }
 
                     if (scrollingVertically) {
+                        DebugDialog.setPaused(true);
                         scrollPosition.y = Mathf.clamp(scrollPosition.y - dy, 0, getScrollMaxTop());
                         lastPoint.set(event.getX(), event.getY());
                         invalidate();
@@ -221,6 +224,7 @@ public class LogView extends View {
                 }
                 break;
             case MotionEvent.ACTION_UP:
+                DebugDialog.setPaused(false);
                 isActionDown = false;
                 break;
         }

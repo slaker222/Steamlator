@@ -39,8 +39,8 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
         View toolbarView = LayoutInflater.from(context).inflate(R.layout.debug_toolbar, llBottomBarPanel, false);
         toolbarView.findViewById(R.id.BTClear).setOnClickListener((v) -> logView.clear());
         toolbarView.findViewById(R.id.BTPause).setOnClickListener((v) -> {
-            paused = !paused;
-            ((ImageButton)v).setImageResource(paused ? R.drawable.icon_play : R.drawable.icon_pause);
+            setPaused(!paused);
+            ((ImageButton)v).setImageResource(getPaused() ? R.drawable.icon_play : R.drawable.icon_pause);
         });
         llBottomBarPanel.addView(toolbarView);
         try {
@@ -53,7 +53,7 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
 
     @Override
     public void call(final String line) {
-        if (!paused) logView.append(line+"\n");
+        if (!getPaused()) logView.append(line+"\n");
         try {
             writer.write(line + "\n");
             writer.flush();
@@ -61,5 +61,13 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
         catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+    
+    public static void setPaused(boolean cond) {
+        paused = cond;
+    }
+    
+    public static boolean getPaused() {
+        return paused;
     }
 }
