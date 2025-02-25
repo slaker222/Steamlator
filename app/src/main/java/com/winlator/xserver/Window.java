@@ -1,10 +1,14 @@
 package com.winlator.xserver;
 
+import android.util.Log;
 import android.util.SparseArray;
 
 import com.winlator.xserver.events.Event;
 import com.winlator.xserver.events.PropertyNotify;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -25,6 +29,7 @@ public class Window extends XResource {
     private short x;
     private short y;
     private short width;
+    private String renderer;
     private short height;
     private short borderWidth;
     private Window parent;
@@ -103,6 +108,10 @@ public class Window extends XResource {
 
     public Property getProperty(int id) {
         return properties.get(id);
+    }
+    
+    public String getRenderer() {
+        return renderer;
     }
 
     public void addProperty(Property property) {
@@ -413,5 +422,45 @@ public class Window extends XResource {
             result += property.nameAsString()+"="+property+"\n";
         }
         return result;
+    }
+    
+    public boolean isEligibleForFrameRating() {
+        int pid = getProcessId();
+        boolean found = false;
+        
+        File procMap = new File("/proc/" + pid + "/maps");
+        if (procMap.exists()) {
+            try {
+                String mapsContent = new String(Files.readAllBytes(procMap.toPath()));
+                if (mapsContent != null) {
+                    if (mapsContent.contains("wined3d")) {
+                        renderer = "WineD3D";
+                        found = true;
+                    }
+                    else if (mapsContent.contains("winevulkan") && mapsContent.contains("opengl32")) {
+                        renderer = "Zink";
+                        found = true;
+                    }
+                    else if (mapsContent.contains("winevulkan") && (mapsContent.contains("d3d9") || mapsContent.contains("d3d10") || mapsContent.contains("d3d11") || mapsContent.contains("d3d12") || mapsContent.contains("d3d8"))) {
+                        renderer = "DXVK";
+                        found = true;
+                    }
+                    else if (mapsContent.contains("opengl32")) {
+                        renderer = "OpenGL";
+                        found = true;
+                    }
+                    else if (mapsContent.contains("winevulkan")) {
+                        renderer = "Vulkan";
+                        found = true;
+                    }
+                }
+                if (found)
+                    Log.d("Window", "Window " + getName() + " is an eligible window for hud");
+            }
+            catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return found;
     }
 }

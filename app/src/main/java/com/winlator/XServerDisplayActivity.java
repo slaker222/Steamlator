@@ -574,19 +574,18 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                     preloaderDialog.closeOnUiThread();
                     winStarted[0] = true;
                 }
-
-                if (window.id == frameRatingWindowId) frameRating.update();
+                    
+                if (frameRating.getVisibility() == View.VISIBLE) {
+                    frameRating.update();
+                }
             }
-
-            @Override
-            public void onModifyWindowProperty(Window window, Property property) {
-                changeFrameRatingVisibility(window, property);
-            }
-
+           
             @Override
             public void onMapWindow(Window window) {
                 // Log the class name of the mapped window
                 Log.d("XServerDisplayActivity", "onMapWindow: Detected window className: " + window.getClassName());
+                
+                changeFrameRatingVisibility(window); 
 
                 // Apply task affinity and other workarounds
                 if (win32AppWorkarounds != null) {
@@ -603,7 +602,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
             @Override
             public void onUnmapWindow(Window window) {
-                changeFrameRatingVisibility(window, null);
+                changeFrameRatingVisibility(window);
             }
         });
 
@@ -3028,17 +3027,22 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 //        }
 //    }
 
-    private void changeFrameRatingVisibility(Window window, Property property) {
+    private void changeFrameRatingVisibility(Window window) {
         if (frameRating == null) return;
-        if (property != null) {
-            if (frameRatingWindowId == -1 && window.attributes.isMapped() && property.nameAsString().equals("_MESA_DRV")) {
+        
+        if (window != null && !window.getName().isEmpty()) {
+            if (frameRatingWindowId == -1 && window.isEligibleForFrameRating()) {
                 frameRatingWindowId = window.id;
+                Log.d("XServerDisplayActivity", "Showing hud for Window " + window.getName());
+                runOnUiThread(() -> frameRating.setVisibility(View.VISIBLE));
+            }    
+            else if (frameRatingWindowId == window.id) {
+                frameRatingWindowId = -1;
+                Log.d("XServerDisplayActivity", "Disabling hud for Window " + window.getName());
+                runOnUiThread(() -> frameRating.setVisibility(View.GONE));
             }
         }
-        else if (window.id == frameRatingWindowId) {
-            frameRatingWindowId = -1;
-            runOnUiThread(() -> frameRating.setVisibility(View.GONE));
-        }
+        
     }
 
     private void scheduleSecondaryExecution(String secondaryExec, int delaySeconds) {
@@ -3059,8 +3063,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     // maybe we can remove this or maybe i will create it...
-//    public void clearContainerCache(Container container){
-//        File rootDir = container.getRootDir();
+//    public void clearContainerCache(Container container){//        File rootDir = container.getRootDir();
 //        final File cacheDir = new File(rootDir, ".cache");
 //        FileUtils.clear(cacheDir);
 //    }

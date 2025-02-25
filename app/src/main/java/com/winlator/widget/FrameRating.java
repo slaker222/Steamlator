@@ -16,7 +16,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     private long lastTime = 0;
     private int frameCount = 0;
     private float lastFPS = 0;
-    private final TextView textView;
+    private final TextView tvFPS;
 
     public FrameRating(Context context) {
         this(context, null);
@@ -30,7 +30,7 @@ public class FrameRating extends FrameLayout implements Runnable {
         super(context, attrs, defStyleAttr);
 
         View view = LayoutInflater.from(context).inflate(R.layout.frame_rating, this, false);
-        textView = view.findViewById(R.id.TVFPS);
+        tvFPS = view.findViewById(R.id.TVFPS);
         addView(view);
     }
 
@@ -50,6 +50,6 @@ public class FrameRating extends FrameLayout implements Runnable {
     @Override
     public void run() {
         if (getVisibility() == GONE) setVisibility(View.VISIBLE);
-        textView.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
+        tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
     }
 }
