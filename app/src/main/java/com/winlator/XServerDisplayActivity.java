@@ -127,6 +127,7 @@ import com.winlator.xserver.Window;
 import com.winlator.xserver.WindowManager;
 import com.winlator.xserver.XServer;
 
+import java.nio.file.Files;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -162,7 +163,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private XServer xServer;
     private InputControlsManager inputControlsManager;
     private ImageFs imageFs;
-    private FrameRating frameRating;
+    private FrameRating frameRating = null;
     private Runnable editInputControlsCallback;
     private Shortcut shortcut;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
@@ -575,7 +576,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                     winStarted[0] = true;
                 }
                     
-                if (frameRating.getVisibility() == View.VISIBLE) {
+                if (frameRating != null && frameRating.getVisibility() == View.VISIBLE) {
                     frameRating.update();
                 }
             }
@@ -1354,6 +1355,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
             // Merge in container’s environment variables
             envVars.putAll(container.getEnvVars());
+            
             // Merge in shortcut environment variables if present
             if (shortcut != null) envVars.putAll(shortcut.getExtra("envVars"));
 
@@ -1926,6 +1928,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (container != null && container.isShowFPS()) {
             frameRating = new FrameRating(this);
+            envVars.put("ENABLE_UTIL_LAYER", "1");
+            envVars.put("LD_PRELOAD", imageFs.getLibDir().getPath() + "/libutil.so");
             frameRating.setVisibility(View.GONE);
             rootView.addView(frameRating);
         }
@@ -3026,12 +3030,33 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 //            winHandler.setProcessAffinity(window.getClassName(), processAffinity);
 //        }
 //    }
+    
+    private boolean isEligibleForFrameRating(Window window) {
+        int pid = window.getProcessId();
+        boolean found = false;
+        
+        File procMap = new File("/proc/" + pid + "/maps");
+        if (procMap.exists()) {
+            try {
+                String mapsContent = new String(Files.readAllBytes(procMap.toPath()));
+                if (mapsContent != null) {
+                    if (mapsContent.contains("opengl32") || mapsContent.contains("winevulkan")) {
+                        found = true;
+                    }
+                }
+            }
+            catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return found;
+    }
 
     private void changeFrameRatingVisibility(Window window) {
         if (frameRating == null) return;
         
         if (window != null && !window.getName().isEmpty()) {
-            if (frameRatingWindowId == -1 && window.isEligibleForFrameRating()) {
+            if (frameRatingWindowId == -1 && isEligibleForFrameRating(window)) {
                 frameRatingWindowId = window.id;
                 Log.d("XServerDisplayActivity", "Showing hud for Window " + window.getName());
                 runOnUiThread(() -> frameRating.setVisibility(View.VISIBLE));
@@ -3039,6 +3064,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             else if (frameRatingWindowId == window.id) {
                 frameRatingWindowId = -1;
                 Log.d("XServerDisplayActivity", "Disabling hud for Window " + window.getName());
+                frameRating.reset();
                 runOnUiThread(() -> frameRating.setVisibility(View.GONE));
             }
         }

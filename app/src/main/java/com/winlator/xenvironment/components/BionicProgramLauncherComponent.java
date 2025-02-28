@@ -171,8 +171,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Context context = environment.getContext();
         ImageFs imageFs = environment.getImageFs();
         File rootDir = imageFs.getRootDir();
-        
-        String preloadedLibs = "";
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
         boolean enableBox86_64Logs = preferences.getBoolean("enable_box86_64_logs", false);
@@ -205,16 +203,18 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
  
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         
+        String ld_preload = this.envVars.get("LD_PRELOAD");
+        
         // Check for specific shared memory libraries
-        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists())
-            preloadedLibs += imageFs.getLibDir() + "/libandroid-sysvshm.so";
+        if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
+            if (ld_preload.isEmpty())
+                ld_preload = imageFs.getLibDir().getPath() + "/libandroid-sysvshm.so";
+            else
+                ld_preload = ld_preload + ":" + imageFs.getLibDir().getPath() + "/libandroid-sysvshm.so";
+        }
+            
+        this.envVars.put("LD_PRELOAD", ld_preload);
         
-        if ((new File(imageFs.getLibDir() + "/libutil.so")).exists())
-            preloadedLibs += ":" + imageFs.getLibDir() + "/libutil.so";
-        
-        envVars.put("LD_PRELOAD", preloadedLibs);
-
-
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
             envVars.putAll(this.envVars);
