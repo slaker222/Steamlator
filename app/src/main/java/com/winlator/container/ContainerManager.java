@@ -211,7 +211,8 @@ public class ContainerManager {
             File steamUserDesktopDir = container.getSteamUserDesktopDir();
             ArrayList<File> files = new ArrayList<>();
             files.addAll(Arrays.asList(desktopDir.listFiles()));
-            files.addAll(Arrays.asList(steamUserDesktopDir.listFiles()));
+            if (steamUserDesktopDir.exists())
+                files.addAll(Arrays.asList(steamUserDesktopDir.listFiles()));
             if (files != null) {
                 for (File file : files) {
                     if (file.getName().endsWith(".desktop")) shortcuts.add(new Shortcut(container, file));
