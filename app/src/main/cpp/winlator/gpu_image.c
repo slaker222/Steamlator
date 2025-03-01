@@ -93,6 +93,7 @@ Java_com_winlator_renderer_GPUImage_hardwareBufferFromSocket(JNIEnv *env, jclass
     AHardwareBuffer *ahb;
     
     uint8_t buf = 1;
+    
     if ((write(fd, &buf, 1)) == -1) {
         printf("Failed to write data to socketpair");
         return 0;
@@ -146,7 +147,9 @@ Java_com_winlator_renderer_GPUImage_lockHardwareBuffer(JNIEnv *env, jclass obj, 
         printf("Invalid AHardwareBuffer pointer\n");
         return NULL;
     }
-
+    
+    AHardwareBuffer_unlock(hardwareBuffer, NULL);
+    
     void *virtualAddr;
     if (AHardwareBuffer_lock(hardwareBuffer, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN, -1, NULL, &virtualAddr) != 0) {
         printf("Failed to lock AHardwareBuffer\n");
