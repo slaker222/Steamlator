@@ -73,9 +73,17 @@ public abstract class ProcessHelper {
             Log.d("ProcessHelper", "Splitting command: " + command);
             String[] splitCommand = splitCommand(command);
             Log.d("ProcessHelper", "Split command result: " + Arrays.toString(splitCommand));
-
             Log.d("ProcessHelper", "Starting process...");
-            java.lang.Process process = Runtime.getRuntime().exec(splitCommand, envp, workingDir);
+            ProcessBuilder pb = new ProcessBuilder(splitCommand);
+            pb.directory(workingDir);
+            pb.environment().putAll(EnvironmentManager.getEnvVars());
+            if (debugCallbacks.isEmpty()) {
+                File null_file = new File("/dev/null");
+                pb.redirectError(null_file);
+                pb.redirectOutput(null_file);
+            }
+            //java.lang.Process process = Runtime.getRuntime().exec(splitCommand, envp, workingDir);
+            java.lang.Process process = pb.start();
 
             // Accessing hidden field
             Log.d("ProcessHelper", "Accessing hidden field to get PID");

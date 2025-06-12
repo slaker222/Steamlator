@@ -212,16 +212,16 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
     private void addBox64EnvVars(EnvVars envVars, boolean enableLogs) {
         envVars.put("BOX64_NOBANNER", ProcessHelper.PRINT_DEBUG && enableLogs ? "0" : "1");
         envVars.put("BOX64_DYNAREC", "1");
-        envVars.put("BOX64_AVX", "1");
 
         if (enableLogs) {
             envVars.put("BOX64_LOG", "1");
             envVars.put("BOX64_DYNAREC_MISSING", "1");
+        } else {
+            envVars.put("BOX64_LOG", "0");
         }
 
         envVars.putAll(Box86_64PresetManager.getEnvVars("box64", environment.getContext(), box64Preset));
         envVars.put("BOX64_X11GLX", "1");
-        envVars.put("BOX64_NORCFILES", "1");
     }
 
     public void suspendProcess() {
