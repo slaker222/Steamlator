@@ -41,6 +41,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
     private boolean wow64Mode = true;
+    private Container container;
     private final ContentsManager contentsManager;
     private final ContentProfile wineProfile;
 
@@ -86,9 +87,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             ContentProfile profile = contentsManager.getProfileByEntryName("box64-" + box64Version);
             if (profile != null)
                 contentsManager.applyContent(profile);
-            else
+            else {
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, "box86_64/box64-" + box64Version + ".tzst", rootDir);
                 preferences.edit().putString("current_box64_version", box64Version).apply();
+            }
         }
 
         // Set execute permissions for box64 just in case
@@ -259,10 +261,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("SSL_CERT_DIR", rootDir.getPath() + "/usr/etc/tls/certs");
         envVars.put("WINE_X11FORCEGLX", "1");
 
+        String winePath = imageFs.getWinePath() + "/bin";
 
+        Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath);
 
-        String winePath = wineProfile == null ? imageFs.getWinePath() + "/bin"
-                : ContentsManager.getSourceFile(context, wineProfile, wineProfile.wineBinPath).getAbsolutePath();
         envVars.put("PATH", winePath + ":" +
                 rootDir.getPath() + "/usr/bin:");
 

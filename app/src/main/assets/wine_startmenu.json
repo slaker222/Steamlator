@@ -11,8 +11,7 @@
         },
         {
             "name" : "Wordpad",
-            "path" : "C:/windows/system32/write.exe",
-            "iconLocation" : "Z:/opt/wine/lib/wine/i386-windows/wordpad.exe"
+            "path" : "C:/windows/system32/write.exe"
         }
         ]
     },

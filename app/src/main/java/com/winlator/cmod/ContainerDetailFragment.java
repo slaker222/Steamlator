@@ -507,9 +507,6 @@ public class ContainerDetailFragment extends Fragment {
         sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
         AppUtils.setSpinnerSelectionFromValue(sGraphicsDriver, selectedDriver);
 
-        sWineVersion.setEnabled(false);
-        sWineVersion.setSelection(0);
-
         final Spinner sRCFile = view.findViewById(R.id.SRCFile);
         final int[] rcfileIds = {0};
         RCManager rcManager = new RCManager(context);
@@ -1148,6 +1145,7 @@ public class ContainerDetailFragment extends Fragment {
                 if (wineInfo.isArm64EC()) {
                     fexcoreFL.setVisibility(View.VISIBLE);
                     sEmulator.setEnabled(true);
+                    if (!isEditMode()) sEmulator.setSelection(0);
                 }
                 else {
                     fexcoreFL.setVisibility(View.GONE);
@@ -1176,8 +1174,9 @@ public class ContainerDetailFragment extends Fragment {
 
 
         view.findViewById(R.id.LLWineVersion).setVisibility(View.VISIBLE);
+        String[] versions = getResources().getStringArray(R.array.wine_entries);
         ArrayList<String> wineVersions = new ArrayList<>();
-        wineVersions.add(WineInfo.MAIN_WINE_VERSION.identifier());
+        wineVersions.addAll(Arrays.asList(versions));
         for (ContentProfile profile : contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WINE))
             wineVersions.add(ContentsManager.getEntryName(profile));
         sWineVersion.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, wineVersions));

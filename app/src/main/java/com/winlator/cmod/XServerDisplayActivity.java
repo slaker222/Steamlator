@@ -482,7 +482,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             String wineVersion = container.getWineVersion();
             wineInfo = WineInfo.fromIdentifier(this, wineVersion);
 
-            if (wineInfo != WineInfo.MAIN_WINE_VERSION) imageFs.setWinePath(wineInfo.path);
+            imageFs.setWinePath(wineInfo.path);
 
             if (shortcutPath != null && !shortcutPath.isEmpty()) {
                 shortcut = new Shortcut(container, new File(shortcutPath));
@@ -2527,11 +2527,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         File syswow64dlls = null;
 
         if (wineInfo.isArm64EC())
-            system32dlls = new File(rootDir, "opt/wine/lib/wine/aarch64-windows");
+            system32dlls = new File(imageFs.getWinePath() + "/lib/wine/aarch64-windows");
         else
-            system32dlls = new File(rootDir, "opt/wine/lib/wine/x86_64-windows");
+            system32dlls = new File(imageFs.getWinePath() + "/lib/wine/x86_64-windows");
 
-        syswow64dlls = new File(rootDir, "opt/wine/lib/wine/i386-windows");
+        syswow64dlls = new File(imageFs.getWinePath() + "/lib/wine/i386-windows");
 
         int filesCopied = 0;
 

@@ -3,9 +3,11 @@ package com.winlator.cmod.core;
 import android.content.Context;
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.winlator.cmod.R;
 import com.winlator.cmod.xenvironment.ImageFs;
 
 import java.io.File;
@@ -17,7 +19,7 @@ public class WineInfo implements Parcelable {
     private static final Pattern pattern = Pattern.compile("^(wine|proton)\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-(x86|x86_64|arm64ec)$");
     public final String version;
     public final String type;
-    public final String subversion;
+    public String subversion;
     public final String path;
     private String arch;
 
@@ -33,6 +35,13 @@ public class WineInfo implements Parcelable {
         this.type = type;
         this.version = version;
         this.subversion = subversion != null && !subversion.isEmpty() ? subversion : null;
+        this.arch = arch;
+        this.path = path;
+    }
+
+    public WineInfo(String type, String version, String arch, String path) {
+        this.type = type;
+        this.version = version;
         this.arch = arch;
         this.path = path;
     }
@@ -105,14 +114,24 @@ public class WineInfo implements Parcelable {
 
     @NonNull
     public static WineInfo fromIdentifier(Context context, String identifier) {
-        if (identifier.equals(MAIN_WINE_VERSION.identifier())) return MAIN_WINE_VERSION;
+        ImageFs imageFs = ImageFs.find(context);
+
+        if (identifier.equals(MAIN_WINE_VERSION.identifier())) return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, imageFs.getRootDir().getPath() + "/opt/" + MAIN_WINE_VERSION.identifier());
+
         Matcher matcher = pattern.matcher(identifier);
         if (matcher.find()) {
-            File installedWineDir = ImageFs.find(context).getInstalledWineDir();
+            String[] wineVersions = context.getResources().getStringArray(R.array.wine_entries);
+            for (String wineVersion : wineVersions) {
+                if (wineVersion.contains(identifier)) {
+                    Log.d("WineInfo", "Setting identifier " + matcher.group(1) + matcher.group(2) + matcher.group(4));
+                    return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(4), imageFs.getRootDir().getPath() + "/opt/" + identifier);
+                }
+            }
+            File installedWineDir = imageFs.getInstalledWineDir();
             String path = (new File(installedWineDir, identifier)).getPath();
             return new WineInfo(matcher.group(0), matcher.group(1), matcher.group(2), matcher.group(3), path);
         }
-        else return MAIN_WINE_VERSION;
+        else return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, imageFs.getRootDir().getPath() + "/opt/" + MAIN_WINE_VERSION.identifier());
     }
 
     public static boolean isMainWineVersion(String wineVersion) {

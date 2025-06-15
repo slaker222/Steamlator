@@ -42,10 +42,20 @@ public abstract class ImageFsInstaller {
         }
     }
 
+    public static void installWineFromAssets(final MainActivity activity) {
+        String[] versions = activity.getResources().getStringArray(R.array.wine_entries);
+        File rootDir = ImageFs.find(activity).getRootDir();
+        for (String version : versions) {
+            File outFile = new File(rootDir, "/opt/" + version);
+            outFile.mkdirs();
+            TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, activity, version + ".txz", outFile);
+        }
+    }
+
     public static void installFromAssets(final MainActivity activity) {
         AppUtils.keepScreenOn(activity);
         ImageFs imageFs = ImageFs.find(activity);
-        final File rootDir = imageFs.getRootDir();
+        File rootDir = imageFs.getRootDir();
 
         SettingsFragment.resetBox86_64Version(activity);
 
@@ -67,6 +77,7 @@ public abstract class ImageFsInstaller {
             });
 
             if (success) {
+                installWineFromAssets(activity);
                 imageFs.createImgVersionFile(LATEST_VERSION);
                 resetContainerImgVersions(activity);
             }
@@ -107,81 +118,5 @@ public abstract class ImageFsInstaller {
             }
         }
         else rootDir.mkdirs();
-    }
-
-    public static void generateCompactContainerPattern(final AppCompatActivity activity) {
-        AppUtils.keepScreenOn(activity);
-        PreloaderDialog preloaderDialog = new PreloaderDialog(activity);
-        preloaderDialog.show(R.string.loading);
-        Executors.newSingleThreadExecutor().execute(() -> {
-            File[] srcFiles, dstFiles;
-            File rootDir = ImageFs.find(activity).getRootDir();
-            File wineSystem32Dir = new File(rootDir, "/opt/wine/lib/wine/x86_64-windows");
-            File wineSysWoW64Dir = new File(rootDir, "/opt/wine/lib/wine/i386-windows");
-
-            File containerPatternDir = new File(activity.getCacheDir(), "container_pattern");
-            FileUtils.delete(containerPatternDir);
-
-
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, activity, "container_pattern.tzst", containerPatternDir);
-
-            File containerSystem32Dir = new File(containerPatternDir, ".wine/drive_c/windows/system32");
-            File containerSysWoW64Dir = new File(containerPatternDir, ".wine/drive_c/windows/syswow64");
-
-            dstFiles = containerSystem32Dir.listFiles();
-            srcFiles = wineSystem32Dir.listFiles();
-
-            ArrayList<String> system32Files = new ArrayList<>();
-            ArrayList<String> syswow64Files = new ArrayList<>();
-
-            for (File dstFile : dstFiles) {
-                for (File srcFile : srcFiles) {
-                    if (dstFile.getName().equals(srcFile.getName())) {
-                        if (FileUtils.contentEquals(srcFile, dstFile)) system32Files.add(srcFile.getName());
-                        break;
-                    }
-                }
-            }
-
-            dstFiles = containerSysWoW64Dir.listFiles();
-            srcFiles = wineSysWoW64Dir.listFiles();
-
-            for (File dstFile : dstFiles) {
-                for (File srcFile : srcFiles) {
-                    if (dstFile.getName().equals(srcFile.getName())) {
-                        if (FileUtils.contentEquals(srcFile, dstFile)) syswow64Files.add(srcFile.getName());
-                        break;
-                    }
-                }
-            }
-
-            try {
-                JSONObject data = new JSONObject();
-
-                JSONArray system32JSONArray = new JSONArray();
-                for (String name : system32Files) {
-                    FileUtils.delete(new File(containerSystem32Dir, name));
-                    system32JSONArray.put(name);
-                }
-                data.put("system32", system32JSONArray);
-
-                JSONArray syswow64JSONArray = new JSONArray();
-                for (String name : syswow64Files) {
-                    FileUtils.delete(new File(containerSysWoW64Dir, name));
-                    syswow64JSONArray.put(name);
-                }
-                data.put("syswow64", syswow64JSONArray);
-
-                FileUtils.writeString(new File(activity.getCacheDir(), "common_dlls.json"), data.toString());
-
-                File outputFile = new File(activity.getCacheDir(), "container_pattern.tzst");
-                FileUtils.delete(outputFile);
-                TarCompressorUtils.compress(TarCompressorUtils.Type.ZSTD, new File(containerPatternDir, ".wine"), outputFile, 22);
-
-                FileUtils.delete(containerPatternDir);
-                preloaderDialog.closeOnUiThread();
-            }
-            catch (JSONException e) {}
-        });
     }
 }
