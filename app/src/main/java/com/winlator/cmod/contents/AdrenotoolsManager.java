@@ -133,12 +133,18 @@ public class AdrenotoolsManager {
     private boolean extractDriverFromResources(String adrenotoolsDriverId) {
         String src = "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".tzst";
         boolean hasExtracted;
-        
+
         File dst = new File(adrenotoolsContentDir, adrenotoolsDriverId);
+        if (dst.exists())
+            return true;
+
         dst.mkdirs();
         Log.d("AdrenotoolsManager", "Extracting " + src + " to " + dst.getAbsolutePath());
         hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst);
-        
+
+        if (!hasExtracted)
+            dst.delete();
+
         return hasExtracted;
     }
     
