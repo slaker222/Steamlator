@@ -20,6 +20,7 @@ import com.winlator.cmod.core.Callback;
 import com.winlator.cmod.core.DefaultVersion;
 import com.winlator.cmod.core.EnvVars;
 import com.winlator.cmod.core.FileUtils;
+import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.core.ProcessHelper;
 import com.winlator.cmod.core.TarCompressorUtils;
 import com.winlator.cmod.core.WineInfo;
@@ -269,21 +270,16 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath);
 
         envVars.put("PATH", winePath + ":" +
-                rootDir.getPath() + "/usr/bin:");
+                rootDir.getPath() + "/usr/bin");
 
-        // **Maybe remove this
-        envVars.put("BOX64_LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib/x86_64-linux-gnu");
  
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);
         
-        String ld_preload = this.envVars.get("LD_PRELOAD");
+        String ld_preload = "";
         
         // Check for specific shared memory libraries
         if ((new File(imageFs.getLibDir(), "libandroid-sysvshm.so")).exists()){
-            if (ld_preload.isEmpty())
-                ld_preload = imageFs.getLibDir().getPath() + "/libandroid-sysvshm.so";
-            else
-                ld_preload = ld_preload + ":" + imageFs.getLibDir().getPath() + "/libandroid-sysvshm.so";
+            ld_preload = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         }
 
         String manufacturer = Build.MANUFACTURER;
@@ -291,10 +287,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Log.d("BionicProgramLauncherComponent", "Applying per manufacturer fixes for manufacturer " + manufacturer.toLowerCase());
 
         /* Temp workaround for Samsung devices */
-        if (manufacturer.toLowerCase().contains("samsung"))
+        if (manufacturer.toLowerCase().contains("samsung") && GPUInformation.getRenderer().toLowerCase().contains("adreno") && new File("/system/lib64/libEGL.so").exists())
             ld_preload = ld_preload + ":" + "/system/lib64/libEGL.so";
 
-        this.envVars.put("LD_PRELOAD", ld_preload);
+        envVars.put("LD_PRELOAD", ld_preload);
         
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
