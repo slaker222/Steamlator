@@ -65,7 +65,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         box64Version = preferences.getString("box64_version", DefaultVersion.BOX64);
         if (box64Version == null || box64Version.isEmpty()) {
             box64Version = DefaultVersion.BOX64; // Assign the default version directly
-            Log.w("GlibcProgramLauncherComponent", "box64Version was null or empty, using default: " + box64Version);
+            Log.w("BionicProgramLauncherComponent", "box64Version was null or empty, using default: " + box64Version);
         }
 
         // If a shortcut is provided, it overrides the SharedPreferences value
@@ -74,11 +74,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             if (shortcutVersion != null && !shortcutVersion.isEmpty()) {
                 box64Version = shortcutVersion;
             } else {
-                Log.w("GlibcProgramLauncherComponent", "Shortcut box64Version was empty, keeping SharedPreferences/default value: " + box64Version);
+                Log.w("BionicProgramLauncherComponent", "Shortcut box64Version was empty, keeping SharedPreferences/default value: " + box64Version);
             }
         }
 
-        Log.d("GlibcProgramLauncherComponent", "box64Version in use: " + box64Version);
+        Log.d("BionicProgramLauncherComponent", "box64Version in use: " + box64Version);
 
         String currentBox64Version = preferences.getString("current_box64_version", "");
         File rootDir = imageFs.getRootDir();
@@ -101,9 +101,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
 
-    private void extractEmulatorsDlls() {
+    private void extractEmulatorsDlls() {;
         File rootDir = environment.getImageFs().getRootDir();
-        File system32dir = new File(rootDir, "home/xuser/.wine/drive_c/windows/system32");
+        File system32dir = new File(rootDir + "/home/xuser/.wine/drive_c/windows/system32");
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "emulators_dlls.tzst", system32dir);
     }
 
