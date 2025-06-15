@@ -237,6 +237,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
         addBox64EnvVars(envVars, enableBox86_64Logs);
 
+        if (envVars.get("BOX64_MMAP32").equals("1") && !wineInfo.isArm64EC())
+            envVars.put("WRAPPER_DISABLE_PLACED", "1");
+
         // Setting up essential environment variables for Wine
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
