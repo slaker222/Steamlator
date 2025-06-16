@@ -282,14 +282,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             ld_preload = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         }
 
-        String manufacturer = Build.MANUFACTURER;
-
-        Log.d("BionicProgramLauncherComponent", "Applying per manufacturer fixes for manufacturer " + manufacturer.toLowerCase());
-
-        /* Temp workaround for Samsung devices */
-        if (manufacturer.toLowerCase().contains("samsung") && GPUInformation.getRenderer().toLowerCase().contains("adreno") && new File("/system/lib64/libEGL.so").exists())
-            ld_preload = ld_preload + ":" + "/system/lib64/libEGL.so";
-
         envVars.put("LD_PRELOAD", ld_preload);
         
         // Merge any additional environment variables from external sources
