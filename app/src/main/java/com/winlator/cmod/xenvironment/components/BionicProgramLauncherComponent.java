@@ -102,7 +102,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
 
-    private void extractEmulatorsDlls() {;
+    private void extractEmulatorsDlls() {
         File rootDir = environment.getImageFs().getRootDir();
         File system32dir = new File(rootDir + "/home/xuser/.wine/drive_c/windows/system32");
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "emulators_dlls.tzst", system32dir);
