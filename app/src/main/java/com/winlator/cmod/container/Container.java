@@ -59,7 +59,6 @@ public class Container {
     private String cpuList;
     private String cpuListWoW64;
     private String desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME;
-    private String box86Preset = Box86_64Preset.COMPATIBILITY;
     private String box64Preset = Box86_64Preset.COMPATIBILITY;
     private File rootDir;
     private JSONObject extraData;
@@ -70,13 +69,16 @@ public class Container {
     private int primaryController = 1;
     private String controllerMapping = new String(new char[XrControllerMapping.values().length]);
     private String blacklistedExtensions;
-
+    private String box64Version = DefaultVersion.BOX64;
     private String wrapperGraphicsDriverVersion = "System";
     private String oldWrapperGraphicsDriverVersion = "System";
 
     private String emulator;
 
     private ContainerManager containerManager;
+
+    public String getBox64Version() { return box64Version; }
+    public void setBox64Version(String version) { this.box64Version = version; }
     
     public String getWrapperGraphicsDriverVersion() {
         return wrapperGraphicsDriverVersion;
@@ -274,14 +276,6 @@ public class Container {
         this.cpuListWoW64 = cpuListWoW64 != null && !cpuListWoW64.isEmpty() ? cpuListWoW64 : null;
     }
 
-    public String getBox86Preset() {
-        return box86Preset;
-    }
-
-    public void setBox86Preset(String box86Preset) {
-        this.box86Preset = box86Preset;
-    }
-
     public String getBox64Preset() {
         return box64Preset;
     }
@@ -431,7 +425,7 @@ public class Container {
             data.put("inputType", inputType);
             data.put("wow64Mode", wow64Mode);
             data.put("startupSelection", startupSelection);
-            data.put("box86Preset", box86Preset);
+            data.put("box64Version", box64Version);
             data.put("box64Preset", box64Preset);
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
@@ -523,8 +517,8 @@ public class Container {
                 case "wineVersion" :
                     setWineVersion(data.getString(key));
                     break;
-                case "box86Preset" :
-                    setBox86Preset(data.getString(key));
+                case "box64Version":
+                    setBox64Version(data.getString(key));
                     break;
                 case "box64Preset" :
                     setBox64Preset(data.getString(key));

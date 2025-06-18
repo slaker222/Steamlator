@@ -281,26 +281,8 @@ public class SettingsFragment extends Fragment {
             startActivityForResult(intent, REQUEST_CODE_FRONTEND_EXPORT_PATH);
         });
 
-        final Spinner sBox86Version = view.findViewById(R.id.SBox86Version);
-        String box86Version = preferences.getString("box86_version", DefaultVersion.BOX86);
-        if (!AppUtils.setSpinnerSelectionFromIdentifier(sBox86Version, box86Version)) {
-            AppUtils.setSpinnerSelectionFromIdentifier(sBox86Version, DefaultVersion.BOX86);
-        }
-
-        final Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
-        String box64Version = preferences.getString("box64_version", DefaultVersion.BOX64);
-
-        ContentsManager contentsManager = new ContentsManager(context);
-        contentsManager.syncContents();
-        loadBox64VersionSpinner(context, contentsManager, sBox64Version);
-
-        if (!AppUtils.setSpinnerSelectionFromIdentifier(sBox64Version, box64Version)) {
-            AppUtils.setSpinnerSelectionFromIdentifier(sBox64Version, DefaultVersion.BOX64);
-        }
-
-        final Spinner sBox86Preset = view.findViewById(R.id.SBox86Preset);
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
-        loadBox86_64PresetSpinners(view, sBox86Preset, sBox64Preset);
+        loadBox86_64PresetSpinners(view, sBox64Preset);
 
         final Spinner sMIDISoundFont = view.findViewById(R.id.SMIDISoundFont);
 
@@ -433,10 +415,6 @@ public class SettingsFragment extends Fragment {
 
             // Save Dark Mode setting
             editor.putBoolean("dark_mode", cbDarkMode.isChecked());
-
-            editor.putString("box86_version", StringUtils.parseIdentifier(sBox86Version.getSelectedItem()));
-            editor.putString("box64_version", StringUtils.parseIdentifier(sBox64Version.getSelectedItem()));
-            editor.putString("box86_preset", Box86_64PresetManager.getSpinnerSelectedId(sBox86Preset));
             editor.putString("box64_preset", Box86_64PresetManager.getSpinnerSelectedId(sBox64Preset));
             editor.putBoolean("use_dri3", cbUseDRI3.isChecked());
             editor.putBoolean("use_xr", cbUseXR.isChecked());
@@ -513,15 +491,6 @@ public class SettingsFragment extends Fragment {
 
 
     private void applyDynamicStyles(View view, boolean isDarkMode) {
-
-        Spinner sBox86Version = view.findViewById(R.id.SBox86Version);
-        sBox86Version.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-
-        Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
-        sBox64Version.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-
-        Spinner sBox86Preset = view.findViewById(R.id.SBox86Preset);
-        sBox86Preset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
 
         Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         sBox64Preset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
@@ -625,9 +594,8 @@ public class SettingsFragment extends Fragment {
         }
     }
 
-    private void loadBox86_64PresetSpinners(View view, final Spinner sBox86Preset, final Spinner sBox64Preset) {
+    private void loadBox86_64PresetSpinners(View view, final Spinner sBox64Preset) {
         final ArrayMap<String, Spinner> spinners = new ArrayMap<String, Spinner>() {{
-            put("box86", sBox86Preset);
             put("box64", sBox64Preset);
         }};
         final Context context = getContext();
@@ -667,13 +635,7 @@ public class SettingsFragment extends Fragment {
             });
         };
 
-        updateSpinner.call("box86");
         updateSpinner.call("box64");
-
-        view.findViewById(R.id.BTAddBox86Preset).setOnClickListener((v) -> onAddPreset.call("box86"));
-        view.findViewById(R.id.BTEditBox86Preset).setOnClickListener((v) -> onEditPreset.call("box86"));
-        view.findViewById(R.id.BTDuplicateBox86Preset).setOnClickListener((v) -> onDuplicatePreset.call("box86"));
-        view.findViewById(R.id.BTRemoveBox86Preset).setOnClickListener((v) -> onRemovePreset.call("box86"));
 
         view.findViewById(R.id.BTAddBox64Preset).setOnClickListener((v) -> onAddPreset.call("box64"));
         view.findViewById(R.id.BTEditBox64Preset).setOnClickListener((v) -> onEditPreset.call("box64"));
@@ -743,22 +705,8 @@ public class SettingsFragment extends Fragment {
     public static void resetBox86_64Version(AppCompatActivity activity) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(activity);
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putString("box86_version", DefaultVersion.BOX86);
-        editor.putString("box64_version", DefaultVersion.BOX64);
-        editor.remove("current_box86_version");
         editor.remove("current_box64_version");
         editor.apply();
-    }
-
-    public static void loadBox64VersionSpinner(Context context, ContentsManager manager, Spinner spinner) {
-        String[] originalItems = context.getResources().getStringArray(R.array.box64_version_entries);
-        List<String> itemList = new ArrayList<>(Arrays.asList(originalItems));
-        for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64)) {
-            String entryName = ContentsManager.getEntryName(profile);
-            int firstDashIndex = entryName.indexOf('-');
-            itemList.add(entryName.substring(firstDashIndex + 1));
-        }
-        spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, itemList));
     }
 
     private void showGyroConfigDialog() {

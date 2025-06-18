@@ -109,6 +109,9 @@
         <item>0.3.6</item>
         <item>0.3.2</item>
     </string-array>
+    <string-array name="wowbox64_version_entries">
+        <item>0.3.4</item>
+    </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>@string/dinput_legacy</item>
         <item>@string/dinput_modern</item>

@@ -37,25 +37,25 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     private String[] bindingPaths;
     private EnvVars envVars;
     private WineInfo wineInfo;
-    private String box86Preset = Box86_64Preset.COMPATIBILITY;
     private String box64Preset = Box86_64Preset.COMPATIBILITY;
     private Callback<Integer> terminationCallback;
     private static final Object lock = new Object();
     private boolean wow64Mode = true;
-    private Container container;
     private final ContentsManager contentsManager;
     private final ContentProfile wineProfile;
-
+    private Container container;
     private final Shortcut shortcut;
     private String box64Version;
 
     public void setWineInfo(WineInfo wineInfo) {
         this.wineInfo = wineInfo;
     }
-
     public WineInfo getWineInfo() {
         return this.wineInfo;
     }
+
+    public Container getContainer() { return this.container; }
+    public void setContainer(Container container) { this.container = container; }
 
     private void extractBox86_64Files() {
         ImageFs imageFs = environment.getImageFs();
@@ -63,11 +63,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
         // Fallback to default if the shared preference is not set or is empty
-        box64Version = preferences.getString("box64_version", DefaultVersion.BOX64);
-        if (box64Version == null || box64Version.isEmpty()) {
-            box64Version = DefaultVersion.BOX64; // Assign the default version directly
-            Log.w("BionicProgramLauncherComponent", "box64Version was null or empty, using default: " + box64Version);
-        }
+        box64Version = container.getBox64Version();
 
         // If a shortcut is provided, it overrides the SharedPreferences value
         if (shortcut != null && shortcut.getExtra("box64Version") != null) {
@@ -206,14 +202,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         this.envVars = envVars;
     }
 
-    public String getBox86Preset() {
-        return box86Preset;
-    }
-
-    public void setBox86Preset(String box86Preset) {
-        this.box86Preset = box86Preset;
-    }
-
     public String getBox64Preset() {
         return box64Preset;
     }
@@ -232,10 +220,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         EnvVars envVars = new EnvVars();
 
-        // Add the Box86 and Box64 environment variables depending on the mode
-        if (!wow64Mode) {
-            addBox86EnvVars(envVars, enableBox86_64Logs);
-        }
         addBox64EnvVars(envVars, enableBox86_64Logs);
 
         if (envVars.get("BOX64_MMAP32").equals("1") && !wineInfo.isArm64EC())
@@ -250,7 +234,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("XDG_CONFIG_DIRS", rootDir.getPath() + "/usr/etc/xdg");
         envVars.put("GST_PLUGIN_PATH", rootDir.getPath() + "/usr/lib/gstreamer-1.0");
         envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
-        envVars.put("VK_LAYER_PATH", rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d");
+        envVars.put("VK_LAYER_PATH", rootDir.getPath() + "/usr/share/vulkan/implicit_layer.d" + ":" + rootDir.getPath() + "/usr/share/vulkan/explicit_layer.d");
         envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
         envVars.put("PREFIX", rootDir.getPath() + "/usr");
         envVars.put("DISPLAY", ":0");
@@ -310,21 +294,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                     terminationCallback.call(status);
             }
         });
-    }
-
-
-    private void addBox86EnvVars(EnvVars envVars, boolean enableLogs) {
-        envVars.put("BOX86_NOBANNER", ProcessHelper.PRINT_DEBUG && enableLogs ? "0" : "1");
-        envVars.put("BOX86_DYNAREC", "1");
-
-        if (enableLogs) {
-            envVars.put("BOX86_LOG", "1");
-            envVars.put("BOX86_DYNAREC_MISSING", "1");
-        }
-
-        envVars.putAll(Box86_64PresetManager.getEnvVars("box86", environment.getContext(), box86Preset));
-        envVars.put("BOX86_X11GLX", "1");
-        envVars.put("BOX86_NORCFILES", "1");
     }
 
     private void addBox64EnvVars(EnvVars envVars, boolean enableLogs) {

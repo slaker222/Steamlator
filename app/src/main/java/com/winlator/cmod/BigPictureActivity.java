@@ -85,7 +85,7 @@ import android.widget.Toast;
 
 public class BigPictureActivity extends AppCompatActivity {
     private ImageView coverArtView;
-    private TextView gameTitleView, graphicsDriverView, graphicsDriverVersionView, dxWrapperView, dxWrapperConfigView, audioDriverView, box86PresetView, box64PresetView, playCountView, playtimeView;
+    private TextView gameTitleView, graphicsDriverView, graphicsDriverVersionView, dxWrapperView, dxWrapperConfigView, audioDriverView, box64PresetView, playCountView, playtimeView;
     private RecyclerView recyclerView;
     private ContainerManager manager;
     private BigPictureAdapter adapter;
@@ -583,7 +583,6 @@ public class BigPictureActivity extends AppCompatActivity {
         dxWrapperView = findViewById(R.id.TVDXWrapper);
         dxWrapperConfigView = findViewById(R.id.TVDXWrapperConfig);
         audioDriverView = findViewById(R.id.TVAudioDriver);
-        box86PresetView = findViewById(R.id.TVBox86Preset);
         box64PresetView = findViewById(R.id.TVBox64Preset);
         playCountView = findViewById(R.id.TVPlayCount);
         playtimeView = findViewById(R.id.TVPlaytime);
@@ -977,7 +976,6 @@ public class BigPictureActivity extends AppCompatActivity {
         setTextOrPlaceholder(dxWrapperView, shortcut.getExtra("dxwrapper"), container.getDXWrapper());
         setTextOrPlaceholder(dxWrapperConfigView, shortcut.getExtra("dxwrapperConfig"), container.getDXWrapperConfig());
         setTextOrPlaceholder(audioDriverView, shortcut.getExtra("audioDriver"), container.getAudioDriver());
-        setTextOrPlaceholder(box86PresetView, shortcut.getExtra("box86Preset"), container.getBox86Preset());
         setTextOrPlaceholder(box64PresetView, shortcut.getExtra("box64Preset"), container.getBox64Preset());
 
         // Handle cover art loading

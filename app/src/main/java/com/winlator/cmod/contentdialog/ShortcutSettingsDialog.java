@@ -32,6 +32,7 @@ import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.contents.ContentProfile;
 import com.winlator.cmod.contents.ContentsManager;
 import com.winlator.cmod.core.AppUtils;
+import com.winlator.cmod.core.DefaultVersion;
 import com.winlator.cmod.core.EnvVars;
 import com.winlator.cmod.core.StringUtils;
 import com.winlator.cmod.core.WineInfo;
@@ -47,6 +48,8 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+
+import kotlin.random.Random;
 
 public class ShortcutSettingsDialog extends ContentDialog {
     private final ShortcutsFragment fragment;
@@ -126,34 +129,6 @@ public class ShortcutSettingsDialog extends ContentDialog {
         ContentsManager contentsManager = new ContentsManager(context);
         
         contentsManager.syncContents();
-        
-        loadBox64VersionSpinner(context, contentsManager, sBox64Version);
-
-        // Add this part to set the initial spinner selection based on the shortcut
-        String currentBox64Version = shortcut.getExtra("box64Version", null);
-        if (currentBox64Version != null) {
-            AppUtils.setSpinnerSelectionFromValue(sBox64Version, currentBox64Version);
-        } else {
-            // Default selection or use a preferred default version
-            sBox64Version.setSelection(0);  // Assuming the first item is the default
-        }
-
-        // Set OnItemSelectedListener for the Box64 version spinner
-        sBox64Version.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-            @Override
-            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-                String selectedVersion = parent.getItemAtPosition(position).toString();
-                box64Version = selectedVersion;  // Update the class-level variable
-                // Update the shortcut extra immediately, or wait until saveData() is called
-                shortcut.putExtra("box64Version", selectedVersion);
-            }
-
-            @Override
-            public void onNothingSelected(AdapterView<?> parent) {
-                // This method must be implemented, even if it's empty.
-                // Optional: You can handle the case where no item is selected, if needed.
-            }
-        });
 
         final View vGraphicsDriverConfig = findViewById(R.id.BTGraphicsDriverConfig);
         
@@ -187,6 +162,34 @@ public class ShortcutSettingsDialog extends ContentDialog {
             sEmulator.setEnabled(false);
             sEmulator.setSelection(1);
         }
+
+        loadBox64VersionSpinner(context, contentsManager, sBox64Version, wineInfo.isArm64EC());
+
+        // Add this part to set the initial spinner selection based on the shortcut
+        String currentBox64Version = shortcut.getExtra("box64Version", shortcut.container.getBox64Version());
+        if (currentBox64Version != null) {
+            AppUtils.setSpinnerSelectionFromValue(sBox64Version, currentBox64Version);
+        } else {
+            // Default selection or use a preferred default version
+            AppUtils.setSpinnerSelectionFromValue(sBox64Version, DefaultVersion.BOX64);
+        }
+
+        // Set OnItemSelectedListener for the Box64 version spinner
+        sBox64Version.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selectedVersion = parent.getItemAtPosition(position).toString();
+                box64Version = selectedVersion;  // Update the class-level variable
+                // Update the shortcut extra immediately, or wait until saveData() is called
+                shortcut.putExtra("box64Version", selectedVersion);
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // This method must be implemented, even if it's empty.
+                // Optional: You can handle the case where no item is selected, if needed.
+            }
+        });
 
         final CheckBox cbUseSecondaryExec = findViewById(R.id.CBUseSecondaryExec);
         final LinearLayout llSecondaryExecOptions = findViewById(R.id.LLSecondaryExecOptions);
@@ -262,8 +265,6 @@ public class ShortcutSettingsDialog extends ContentDialog {
         final CheckBox cbForceFullscreen = findViewById(R.id.CBForceFullscreen);
         cbForceFullscreen.setChecked(shortcut.getExtra("forceFullscreen", "0").equals("1"));
 
-        final Spinner sBox86Preset = findViewById(R.id.SBox86Preset);
-        Box86_64PresetManager.loadSpinner("box86", sBox86Preset, shortcut.getExtra("box86Preset", shortcut.container.getBox86Preset()));
 
         final Spinner sBox64Preset = findViewById(R.id.SBox64Preset);
         Box86_64PresetManager.loadSpinner("box64", sBox64Preset, shortcut.getExtra("box64Preset", shortcut.container.getBox64Preset()));
@@ -398,9 +399,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
 //                    shortcut.putExtra("box64Version", box64Version);
 //                }
 
-                String box86Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox86Preset);
                 String box64Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox64Preset);
-                shortcut.putExtra("box86Preset", !box86Preset.equals(shortcut.container.getBox86Preset()) ? box86Preset : null);
                 shortcut.putExtra("box64Preset", !box64Preset.equals(shortcut.container.getBox64Preset()) ? box64Preset : null);
 
                 shortcut.putExtra("rcfileId", rcfileIds[0] != shortcut.container.getRCFileId() ? Integer.toString(rcfileIds[0]) : null);
@@ -496,7 +495,6 @@ public class ShortcutSettingsDialog extends ContentDialog {
         Spinner sDDrawrapper = view.findViewById(R.id.SDDrawrapper);
         Spinner sAudioDriver = view.findViewById(R.id.SAudioDriver);
         Spinner sEmulatorSpinner = view.findViewById(R.id.SEmulator);
-        Spinner sBox86Preset = view.findViewById(R.id.SBox86Preset);
         Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         Spinner sControlsProfile = view.findViewById(R.id.SControlsProfile);
         Spinner sRCFile = view.findViewById(R.id.SRCFile);
@@ -514,7 +512,6 @@ public class ShortcutSettingsDialog extends ContentDialog {
         sDDrawrapper.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sAudioDriver.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sEmulatorSpinner.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-        sBox86Preset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sBox64Preset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sControlsProfile.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sRCFile.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
@@ -674,7 +671,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         ContentDialog.alert(context, R.string.enable_xinput_and_dinput_same_time, null);
     }
 
-    public static void loadBox64VersionSpinner(Context context, ContentsManager manager, Spinner spinner) {
+    public static void loadBox64VersionSpinner(Context context, ContentsManager manager, Spinner spinner, boolean isArm64EC) {
         String[] originalItems = context.getResources().getStringArray(R.array.box64_version_entries);
         List<String> itemList = new ArrayList<>(Arrays.asList(originalItems));
         for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64)) {

@@ -179,15 +179,6 @@
         android:visibility="gone" />
 
     <TextView
-        android:id="@+id/TVBox86Preset"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Box86 Preset:"
-        android:textAppearance="?android:attr/textAppearanceSmall"
-        android:textColor="@android:color/white"
-        android:visibility="gone" />
-
-    <TextView
         android:id="@+id/TVBox64Preset"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
