@@ -69,6 +69,9 @@ public class Container {
     private int primaryController = 1;
     private String controllerMapping = new String(new char[XrControllerMapping.values().length]);
     private String blacklistedExtensions;
+    private String oldfexcoreVersion;
+    private String fexcoreVersion = DefaultVersion.FEXCORE;
+    private String oldbox64Version;
     private String box64Version = DefaultVersion.BOX64;
     private String wrapperGraphicsDriverVersion = "System";
     private String oldWrapperGraphicsDriverVersion = "System";
@@ -77,8 +80,15 @@ public class Container {
 
     private ContainerManager containerManager;
 
+    public String getFEXCoreVersion() { return this.fexcoreVersion; }
+    public void setFEXCoreVersion(String version) { this.fexcoreVersion = version; }
+    public String getOldFEXCoreVersion() { return this.oldfexcoreVersion; }
+    public void setOldFEXCoreVersion(String version) { this.oldfexcoreVersion = version; }
+
     public String getBox64Version() { return box64Version; }
     public void setBox64Version(String version) { this.box64Version = version; }
+    public String getOldBox64Version() { return this.oldbox64Version; }
+    public void setOldBox64Version(String version) { this.oldbox64Version = version; }
     
     public String getWrapperGraphicsDriverVersion() {
         return wrapperGraphicsDriverVersion;
@@ -425,8 +435,11 @@ public class Container {
             data.put("inputType", inputType);
             data.put("wow64Mode", wow64Mode);
             data.put("startupSelection", startupSelection);
+            data.put("oldbox64Version", oldbox64Version);
             data.put("box64Version", box64Version);
             data.put("box64Preset", box64Preset);
+            data.put("oldfexcoreVersion", oldfexcoreVersion);
+            data.put("fexcoreVersion", fexcoreVersion);
             data.put("desktopTheme", desktopTheme);
             data.put("extraData", extraData);
             data.put("rcfileId", rcfileId);
@@ -517,11 +530,20 @@ public class Container {
                 case "wineVersion" :
                     setWineVersion(data.getString(key));
                     break;
+                case "oldbox64Version":
+                    setOldBox64Version(data.getString(key));
+                    break;
                 case "box64Version":
                     setBox64Version(data.getString(key));
                     break;
                 case "box64Preset" :
                     setBox64Preset(data.getString(key));
+                    break;
+                case "oldfexcoreVersion":
+                    setOldFEXCoreVersion(data.getString(key));
+                    break;
+                case "fexcoreVersion":
+                    setFEXCoreVersion(data.getString(key));
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));

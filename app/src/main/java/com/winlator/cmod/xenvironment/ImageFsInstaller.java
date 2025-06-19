@@ -57,7 +57,7 @@ public abstract class ImageFsInstaller {
         ImageFs imageFs = ImageFs.find(activity);
         File rootDir = imageFs.getRootDir();
 
-        SettingsFragment.resetBox86_64Version(activity);
+        SettingsFragment.resetEmulatorsVersion(activity);
 
         final DownloadProgressDialog dialog = new DownloadProgressDialog(activity);
         dialog.show(R.string.installing_system_files);

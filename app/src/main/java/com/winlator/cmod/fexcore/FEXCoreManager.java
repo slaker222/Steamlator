@@ -9,6 +9,8 @@ import android.widget.ArrayAdapter;
 import android.widget.Spinner;
 
 import com.winlator.cmod.container.Container;
+import com.winlator.cmod.core.AppUtils;
+import com.winlator.cmod.core.DefaultVersion;
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.xenvironment.ImageFs;
 import java.io.File;
@@ -220,7 +222,7 @@ public final class FEXCoreManager {
         spnr.setSelection(position);
     }
     
-    public static void loadFEXCoreSpinners(Context ctx, Container container, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ModeSpinner) {
+    public static void loadFEXCoreSettings(Context ctx, Container container, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ModeSpinner) {
         File imageFsRoot = new File(ctx.getFilesDir(), "imagefs");
         imageFS = ImageFs.find(imageFsRoot);
         ContainerManager containerManager = new ContainerManager(ctx);
@@ -244,7 +246,7 @@ public final class FEXCoreManager {
             setFromDefaults(fexcoreTSOSpinner, fexcoreX87ModeSpinner, fexcoreMultiblockSpinner);
     }
     
-    public static void loadFEXCoreSpinners(Context ctx, Shortcut shortcut, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ModeSpinner) {
+    public static void loadFEXCoreSettings(Context ctx, Shortcut shortcut, Spinner fexcoreTSOSpinner, Spinner fexcoreMultiblockSpinner, Spinner fexcoreX87ModeSpinner) {
         File imageFsRoot = new File(ctx.getFilesDir(), "imagefs");
         imageFS = ImageFs.find(imageFsRoot);
         
@@ -271,7 +273,24 @@ public final class FEXCoreManager {
         String x87ReducedPrecisionValue = (String)fexcoreX87ModeSpinner.getSelectedItem();
         if (!configFile.exists())
             configFile.getParentFile().mkdirs();
-       writeToConfigFile(preset, multiBlockValue, x87ReducedPrecisionValue);
+        writeToConfigFile(preset, multiBlockValue, x87ReducedPrecisionValue);
+    }
+
+    public static void loadFEXCoreVersion(Context context, Spinner spinner, Container container) {
+        String[] originalItems = context.getResources().getStringArray(R.array.fexcore_version_entries);
+        List<String> itemList = new ArrayList<>(Arrays.asList(originalItems));
+        spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, itemList));
+        if (container != null)
+            AppUtils.setSpinnerSelectionFromValue(spinner, container.getFEXCoreVersion());
+        else
+            AppUtils.setSpinnerSelectionFromValue(spinner, DefaultVersion.FEXCORE);
+    }
+
+    public static void loadFEXCoreVersion(Context context, Spinner spinner, Shortcut shortcut) {
+        String[] originalItems = context.getResources().getStringArray(R.array.fexcore_version_entries);
+        List<String> itemList = new ArrayList<>(Arrays.asList(originalItems));
+        spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, itemList));
+        AppUtils.setSpinnerSelectionFromValue(spinner, shortcut.getExtra("fexcoreVersion", shortcut.container.getFEXCoreVersion()));
     }
 
     public static void createAppConfigFiles(Context ctx) {

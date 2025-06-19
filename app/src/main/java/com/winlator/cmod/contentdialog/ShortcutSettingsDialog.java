@@ -268,12 +268,15 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
         final Spinner sBox64Preset = findViewById(R.id.SBox64Preset);
         Box86_64PresetManager.loadSpinner("box64", sBox64Preset, shortcut.getExtra("box64Preset", shortcut.container.getBox64Preset()));
+
+        final Spinner sFEXCoreVersion = findViewById(R.id.SFEXCoreVersion);
+        FEXCoreManager.loadFEXCoreVersion(context, sFEXCoreVersion, shortcut);
         
         final Spinner sFEXCoreTSOPreset = findViewById(R.id.SFEXCoreTSOPreset);
         final Spinner sFEXCoreMultiBlock = findViewById(R.id.SFEXCoreMultiblock);
         final Spinner sFEXCoreX87ReducedPrecision = findViewById(R.id.SFEXCoreX87ReducedPrecision);
         
-        FEXCoreManager.loadFEXCoreSpinners(context, shortcut, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
+        FEXCoreManager.loadFEXCoreSettings(context, shortcut, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
 
         final Spinner sRCFile = findViewById(R.id.SRCFile);
         final int[] rcfileIds = {0};
@@ -404,6 +407,8 @@ public class ShortcutSettingsDialog extends ContentDialog {
 
                 shortcut.putExtra("rcfileId", rcfileIds[0] != shortcut.container.getRCFileId() ? Integer.toString(rcfileIds[0]) : null);
 
+                String fexcoreVersion = sFEXCoreVersion.getSelectedItem().toString();
+                shortcut.putExtra("fexcoreVersion", !fexcoreVersion.equals(shortcut.container.getFEXCoreVersion()) ? fexcoreVersion : null);
 
                 ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
                 int controlsProfile = sControlsProfile.getSelectedItemPosition() > 0 ? profiles.get(sControlsProfile.getSelectedItemPosition() - 1).id : 0;
@@ -501,6 +506,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         Spinner sDInputType = view.findViewById(R.id.SDInputType);
         Spinner sMIDISoundFont = view.findViewById(R.id.SMIDISoundFont);
         Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
+        Spinner sFEXCoreVersion = view.findViewById(R.id.SFEXCoreVersion);
         Spinner sFEXCoreTSOPreset = findViewById(R.id.SFEXCoreTSOPreset);
         Spinner sFEXCoreMultiBlock = findViewById(R.id.SFEXCoreMultiblock);
         Spinner sFEXCoreX87ReducedPrecision = findViewById(R.id.SFEXCoreX87ReducedPrecision);
@@ -521,6 +527,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         sFEXCoreTSOPreset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sFEXCoreMultiBlock.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sFEXCoreX87ReducedPrecision.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        sFEXCoreVersion.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
 
 //        EditText etLC_ALL = view.findViewById(R.id.ETlcall);
         EditText etExecArgs = view.findViewById(R.id.ETExecArgs);
@@ -672,12 +679,17 @@ public class ShortcutSettingsDialog extends ContentDialog {
     }
 
     public static void loadBox64VersionSpinner(Context context, ContentsManager manager, Spinner spinner, boolean isArm64EC) {
-        String[] originalItems = context.getResources().getStringArray(R.array.box64_version_entries);
-        List<String> itemList = new ArrayList<>(Arrays.asList(originalItems));
-        for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64)) {
-            String entryName = ContentsManager.getEntryName(profile);
-            int firstDashIndex = entryName.indexOf('-');
-            itemList.add(entryName.substring(firstDashIndex + 1));
+        List<String> itemList;
+        if (isArm64EC)
+            itemList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.wowbox64_version_entries)));
+        else
+            itemList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.box64_version_entries)));
+        if (!isArm64EC) {
+            for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64)) {
+                String entryName = ContentsManager.getEntryName(profile);
+                int firstDashIndex = entryName.indexOf('-');
+                itemList.add(entryName.substring(firstDashIndex + 1));
+            }
         }
         spinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, itemList));
     }

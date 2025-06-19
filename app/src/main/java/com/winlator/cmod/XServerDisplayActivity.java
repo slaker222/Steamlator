@@ -664,7 +664,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                         else if (emulator.toLowerCase().equals("fexcore"))
                             envVars.put("HODLL", "libwow64fex.dll");
                         else
-                            envVars.put("HODLL", "box64cpu.dll");
+                            envVars.put("HODLL", "wowbox64.dll");
                         if (isOpenWithAndroidBrowser)
                             envVars.put("WINE_OPEN_WITH_ANDROID_BROWSER", "1");
                         if (isShareAndroidClipboard) {

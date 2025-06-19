@@ -702,10 +702,12 @@ public class SettingsFragment extends Fragment {
         }
     }
 
-    public static void resetBox86_64Version(AppCompatActivity activity) {
+    public static void resetEmulatorsVersion(AppCompatActivity activity) {
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(activity);
         SharedPreferences.Editor editor = preferences.edit();
         editor.remove("current_box64_version");
+        editor.remove("current_wowbox64_version");
+        editor.remove("current_fexcore_version");
         editor.apply();
     }
 

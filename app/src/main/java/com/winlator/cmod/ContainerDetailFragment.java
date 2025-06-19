@@ -226,7 +226,10 @@ public class ContainerDetailFragment extends Fragment {
 
         Spinner sBox64Version = view.findViewById(R.id.SBox64Version);
         sBox64Version.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-        
+
+        Spinner sFEXCoreVersion = view.findViewById(R.id.SFEXCoreVersion);
+        sFEXCoreVersion.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+
         Spinner sFEXCoreTSOPreset = view.findViewById(R.id.SFEXCoreTSOPreset);
         sFEXCoreTSOPreset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         
@@ -490,12 +493,15 @@ public class ContainerDetailFragment extends Fragment {
 
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         Box86_64PresetManager.loadSpinner("box64", sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box86_64Preset.COMPATIBILITY));
-        
+
+        final Spinner sFEXCoreVersion = view.findViewById(R.id.SFEXCoreVersion);
+        FEXCoreManager.loadFEXCoreVersion(context, sFEXCoreVersion, container);
+
         final Spinner sFEXCoreTSOPreset = view.findViewById(R.id.SFEXCoreTSOPreset);
         final Spinner sFEXCoreMultiBlock = view.findViewById(R.id.SFEXCoreMultiblock);
         final Spinner sFEXCoreX87ReducedPrecision = view.findViewById(R.id.SFEXCoreX87ReducedPrecision);
         
-        FEXCoreManager.loadFEXCoreSpinners(context, container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
+        FEXCoreManager.loadFEXCoreSettings(context, container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
 
         String selectedDriver = sGraphicsDriver.getSelectedItem().toString();
         List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
@@ -569,7 +575,7 @@ public class ContainerDetailFragment extends Fragment {
                 String box64Preset = Box86_64PresetManager.getSpinnerSelectedId(sBox64Preset);
                 String desktopTheme = getDesktopTheme(view);
                 int rcfileId = rcfileIds[0];
-
+                String fexcoreVersion = sFEXCoreVersion.getSelectedItem().toString();
                 // Capture missing properties
                 String midiSoundFont = sMIDISoundFont.getSelectedItemPosition() == 0 ? "" : sMIDISoundFont.getSelectedItem().toString();
                 String lc_all = etLC_ALL.getText().toString();
@@ -624,6 +630,7 @@ public class ContainerDetailFragment extends Fragment {
                     container.setStartupSelection(startupSelection);
                     container.setBox64Version(box64Version);
                     container.setBox64Preset(box64Preset);
+                    container.setFEXCoreVersion(fexcoreVersion);
                     container.setDesktopTheme(desktopTheme);
                     container.setRcfileId(rcfileId);
                     container.setMidiSoundFont(midiSoundFont);
@@ -660,6 +667,7 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("startupSelection", startupSelection);
                     data.put("box64Version", box64Version);
                     data.put("box64Preset", box64Preset);
+                    data.put("fexcoreVersion", fexcoreVersion);
                     data.put("desktopTheme", desktopTheme);
                     data.put("rcfileId", rcfileId);
                     data.put("wineVersion", sWineVersion.getSelectedItem().toString());
