@@ -495,7 +495,7 @@ public class ContainerDetailFragment extends Fragment {
         Box86_64PresetManager.loadSpinner("box64", sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box86_64Preset.COMPATIBILITY));
 
         final Spinner sFEXCoreVersion = view.findViewById(R.id.SFEXCoreVersion);
-        FEXCoreManager.loadFEXCoreVersion(context, sFEXCoreVersion, container);
+        FEXCoreManager.loadFEXCoreVersion(context, contentsManager, sFEXCoreVersion, container);
 
         final Spinner sFEXCoreTSOPreset = view.findViewById(R.id.SFEXCoreTSOPreset);
         final Spinner sFEXCoreMultiBlock = view.findViewById(R.id.SFEXCoreMultiblock);
@@ -1245,6 +1245,12 @@ public class ContainerDetailFragment extends Fragment {
         }
         if (!isArm64EC) {
             for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64)) {
+                String entryName = ContentsManager.getEntryName(profile);
+                int firstDashIndex = entryName.indexOf('-');
+                itemList.add(entryName.substring(firstDashIndex + 1));
+            }
+        } else {
+            for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64)) {
                 String entryName = ContentsManager.getEntryName(profile);
                 int firstDashIndex = entryName.indexOf('-');
                 itemList.add(entryName.substring(firstDashIndex + 1));

@@ -81,9 +81,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             ContentProfile profile = contentsManager.getProfileByEntryName("box64-" + box64Version);
             if (profile != null)
                 contentsManager.applyContent(profile);
-            else {
+            else
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, "box86_64/box64-" + box64Version + ".tzst", rootDir);
-            }
+
             if(shortcut != null) {
                 shortcut.putExtra("oldbox64Version", box64Version);
                 shortcut.saveData();
@@ -124,7 +124,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         Log.d("BionicProgramLauncherComponent", "fexcoreVersion in use: " + fexcoreVersion);
 
         if (!wowbox64Version.equals(oldwowbox64Version)) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
+            ContentProfile profile = contentsManager.getProfileByEntryName("wowbox64-" + wowbox64Version);
+            if (profile != null)
+                contentsManager.applyContent(profile);
+            else
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "wowbox64/wowbox64-" + wowbox64Version + ".tzst", system32dir);
             if (shortcut != null) {
                 shortcut.putExtra("oldbox64Version", wowbox64Version);
                 shortcut.saveData();
@@ -136,7 +140,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         }
 
         if (!fexcoreVersion.equals(oldfexcoreVersion)) {
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
+            ContentProfile profile = contentsManager.getProfileByEntryName("fexcore-" + fexcoreVersion);
+            if (profile != null)
+                contentsManager.applyContent(profile);
+            else
+                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, environment.getContext(), "fexcore/fexcore-" + fexcoreVersion + ".tzst", system32dir);
             if(shortcut != null) {
                 shortcut.putExtra("oldfexcoreVersion", fexcoreVersion);
                 shortcut.saveData();

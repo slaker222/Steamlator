@@ -31,6 +31,8 @@ public class ContentsManager {
     public static final String[] VKD3D_TRUST_FILES = {"${system32}/d3d12core.dll", "${system32}/d3d12.dll",
             "${syswow64}/d3d12core.dll", "${syswow64}/d3d12.dll"};
     public static final String[] BOX64_TRUST_FILES = {"${bindir}/box64"};
+    public static final String[] WOWBOX64_TRUST_FILES = {"${system32}/wowbox64.dll"};
+    public static final String[] FEXCORE_TRUST_FILES = {"$(system32}/libarm64ecfex.dll", "${system32}/libwow64fex.dll"};
     private Map<String, String> dirTemplateMap;
     private Map<ContentProfile.ContentType, List<String>> trustedFilesMap;
 
@@ -344,6 +346,8 @@ public class ContentsManager {
                     case CONTENT_TYPE_DXVK -> DXVK_TRUST_FILES;
                     case CONTENT_TYPE_VKD3D -> VKD3D_TRUST_FILES;
                     case CONTENT_TYPE_BOX64 -> BOX64_TRUST_FILES;
+                    case CONTENT_TYPE_WOWBOX64 -> WOWBOX64_TRUST_FILES;
+                    case CONTENT_TYPE_FEXCORE -> FEXCORE_TRUST_FILES;
                     default -> new String[0];
                 };
                 for (String path : paths)

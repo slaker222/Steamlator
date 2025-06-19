@@ -270,7 +270,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         Box86_64PresetManager.loadSpinner("box64", sBox64Preset, shortcut.getExtra("box64Preset", shortcut.container.getBox64Preset()));
 
         final Spinner sFEXCoreVersion = findViewById(R.id.SFEXCoreVersion);
-        FEXCoreManager.loadFEXCoreVersion(context, sFEXCoreVersion, shortcut);
+        FEXCoreManager.loadFEXCoreVersion(context, contentsManager, sFEXCoreVersion, shortcut);
         
         final Spinner sFEXCoreTSOPreset = findViewById(R.id.SFEXCoreTSOPreset);
         final Spinner sFEXCoreMultiBlock = findViewById(R.id.SFEXCoreMultiblock);
@@ -686,6 +686,12 @@ public class ShortcutSettingsDialog extends ContentDialog {
             itemList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.box64_version_entries)));
         if (!isArm64EC) {
             for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_BOX64)) {
+                String entryName = ContentsManager.getEntryName(profile);
+                int firstDashIndex = entryName.indexOf('-');
+                itemList.add(entryName.substring(firstDashIndex + 1));
+            }
+        } else {
+            for (ContentProfile profile : manager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_WOWBOX64)) {
                 String entryName = ContentsManager.getEntryName(profile);
                 int firstDashIndex = entryName.indexOf('-');
                 itemList.add(entryName.substring(firstDashIndex + 1));
