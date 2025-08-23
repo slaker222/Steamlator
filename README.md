@@ -55,6 +55,7 @@ Use DXVK below version 2.0 (other versions are for Turnip).
 - DXVK ([github.com/doitsujin/dxvk](https://github.com/doitsujin/dxvk))
 - VKD3D ([gitlab.winehq.org/wine/vkd3d](https://gitlab.winehq.org/wine/vkd3d))
 - CNC DDraw ([github.com/FunkyFr3sh/cnc-ddraw](https://github.com/FunkyFr3sh/cnc-ddraw))
+- Rare ([github.com/RareDevs/Rare](https://github.com/RareDevs/Rare))
 
 Special thanks to all the developers involved in these projects.<br>
 Thank you to all the people who believe in this project.
@@ -66,4 +67,5 @@ container_pattern_x86_64.tzst
 imagefs.txz
 proton-9.0-x86_64_container_pattern.tzst
 proton-9.0-x86_64.txz 
+
 
