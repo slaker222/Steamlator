@@ -18,6 +18,10 @@ Winlator is an Android application that lets you to run Windows (x86_64) applica
 1. Download and install the APK (Steamlator 1.5.2) from [GitHub Releases](https://github.com/slaker222/steamlator/releases)
 2. Launch the app and wait for the installation process to finish
 
+<p align="center">
+  <img src="https://img.shields.io/github/downloads/slaker222/steamlator/total" alt="Total Downloads" width="150">
+</p>
+
 # Snapdragon 695
 
 
@@ -62,3 +66,4 @@ container_pattern_x86_64.tzst
 imagefs.txz
 proton-9.0-x86_64_container_pattern.tzst
 proton-9.0-x86_64.txz 
+
