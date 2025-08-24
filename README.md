@@ -26,7 +26,9 @@ Winlator is an Android application that lets you to run Windows (x86_64) applica
 
 
 
-https://github.com/user-attachments/assets/35036d22-6cba-445b-ad2a-5b197092dd64
+
+https://github.com/user-attachments/assets/8bc59d4d-83b8-4f8d-8ec9-f5f91b81fcd7
+
 
 
 
@@ -67,5 +69,6 @@ container_pattern_x86_64.tzst
 imagefs.txz
 proton-9.0-x86_64_container_pattern.tzst
 proton-9.0-x86_64.txz 
+
 
 
