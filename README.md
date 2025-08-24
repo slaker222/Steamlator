@@ -22,7 +22,7 @@ Winlator is an Android application that lets you to run Windows (x86_64) applica
   <img src="https://img.shields.io/github/downloads/slaker222/steamlator/total" alt="Total Downloads" width="150">
 </p>
 
-# Snapdragon 695
+# Snapdragon 695 (andreno 619)
 
 
 
@@ -30,7 +30,14 @@ Winlator is an Android application that lets you to run Windows (x86_64) applica
 https://github.com/user-attachments/assets/8bc59d4d-83b8-4f8d-8ec9-f5f91b81fcd7
 
 
+# (andreno 710)
 
+<p align="center">
+  <a href="https://www.youtube.com/clip/UgkxlK6Il6mGWHS6Y9niqJCzTuPD_WcKI9hR">
+    <img src="https://i.ytimg.com/vi/L1lHTDt9PE8/hq720.jpg?sqp=-oaymwEcCNAFEJQDSFXyq4qpAw4IARUAAIhCGAFwAcABBg==&rs=AOn4CLAxZwMRul7QM5QMRyEXAT1N4_43-g" 
+         alt="Play on Youtube" width="1000">
+  </a>
+</p>
 
 ----
 
@@ -59,8 +66,8 @@ Use DXVK below version 2.0 (other versions are for Turnip).
 - CNC DDraw ([github.com/FunkyFr3sh/cnc-ddraw](https://github.com/FunkyFr3sh/cnc-ddraw))
 - Rare ([github.com/RareDevs/Rare](https://github.com/RareDevs/Rare))
 
-Special thanks to all the developers involved in these projects.<br>
-Thank you to all the people who believe in this project.
+thanks a lot [brunodev85](https://github.com/brunodev85/winlator) , [Succubussix](https://github.com/Succubussix/winlator-bionic-glibc) , [pipetto-crypto](https://github.com/Pipetto-crypto/winlator) , [coffincolors
+](https://github.com/coffincolors/winlator) , [ziad9267](https://github.com/ziad9267) , [REF4IK](https://github.com/REF4IK/Components-) , [de0ver](https://github.com/de0ver) , [ajay9634](https://github.com/ajay9634)
 
 if you want to build apk you need to download [MEGA](https://mega.nz/folder/X1Yw1YDa#g8GBelGf20UROVbZRq31rQ)
 container_pattern_arm64ec.tzst
@@ -69,6 +76,7 @@ container_pattern_x86_64.tzst
 imagefs.txz
 proton-9.0-x86_64_container_pattern.tzst
 proton-9.0-x86_64.txz 
+
 
 
 
