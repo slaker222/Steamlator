@@ -41,6 +41,14 @@ https://github.com/user-attachments/assets/8bc59d4d-83b8-4f8d-8ec9-f5f91b81fcd7
 
 ----
 
+## Is it safe to use Steamlator? – Yes ✅
+
+- Steamlator has fully open-source code - you can compile the APK yourself   
+- Steamlator uses original Steam files. All data is transmitted directly between you and Steam, without intermediaries.  
+- If you have Steam Guard enabled, it will show that the login was made from your country.  
+
+----
+
 #⚠️ Issues & Solutions
 
 🔄 Endless Steam Loading
@@ -76,6 +84,7 @@ container_pattern_x86_64.tzst
 imagefs.txz
 proton-9.0-x86_64_container_pattern.tzst
 proton-9.0-x86_64.txz 
+
 
 
 
