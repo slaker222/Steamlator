@@ -77,5 +77,6 @@
   { "type": "DXVK", "verName": "2.6.1", "verCode": 1, "remoteUrl": "https://github.com/REF4IK/Components-/releases/download/1/dxvk-2.6.1.wcp" },
   { "type": "DXVK", "verName": "2.6-1-gplasync", "verCode": 1, "remoteUrl": "https://github.com/REF4IK/Components-/releases/download/1/dxvk-2.6-1-gplasync.wcp" },
   { "type": "DXVK", "verName": "2.7-arm64ec-gplasync", "verCode": 1, "remoteUrl": "https://github.com/ziad9267/Winlator-Contents/raw/refs/heads/main/DXVK/dxvk-2.7-arm64ec-gplasync.wcp" },
-  { "type": "DXVK", "verName": "2.7", "verCode": 1, "remoteUrl": "https://github.com/slaker222/wcp-for-winlator/releases/download/wcp/dxvk-2.7.wcp" }
+  { "type": "DXVK", "verName": "2.7", "verCode": 1, "remoteUrl": "https://github.com/slaker222/wcp-for-winlator/releases/download/wcp/dxvk-2.7.wcp" },
+  { "type": "DXVK", "verName": "2.7.1", "verCode": 1, "remoteUrl": "https://github.com/slaker222/wcp-for-winlator/releases/download/wcp/dxvk-2.7.1.wcp" }
 ]
