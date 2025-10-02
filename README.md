@@ -11,11 +11,11 @@ Uses special launch arguments for maximum compatibility.
 Verified: Steam works on devices with Helio G99 and Snapdragon 665
 (if your processor is more powerful, it will obviously work too).
 
-Winlator is an Android application that lets you to run Windows (x86_64) applications with Proton and Box86/Box64.
+Steamlator is an Android application that lets you to run Windows (x86_64) applications with Proton and Box86/Box64.
 
 # Installation
 
-1. Download and install the APK (Steamlator 1.5.2) from [GitHub Releases](https://github.com/slaker222/steamlator/releases)
+1. Download and install the APK (Steamlator 1.6) from [GitHub Releases](https://github.com/slaker222/steamlator/releases)
 2. Launch the app and wait for the installation process to finish
 
 <p align="center">
@@ -84,6 +84,7 @@ container_pattern_x86_64.tzst
 imagefs.txz
 proton-9.0-x86_64_container_pattern.tzst
 proton-9.0-x86_64.txz 
+
 
 
 
