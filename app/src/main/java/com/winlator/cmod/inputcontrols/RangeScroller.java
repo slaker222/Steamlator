@@ -19,6 +19,7 @@ public class RangeScroller {
     private boolean isActionDown = false;
     private boolean scrolling = false;
     private Timer timer;
+    private int pressedIndex = -1;
 
     public RangeScroller(InputControlsView inputControlsView, ControlElement element) {
         this.inputControlsView = inputControlsView;
@@ -44,6 +45,10 @@ public class RangeScroller {
         if (from < 0) from = (byte)(range.max + from);
         byte to = (byte)(from + element.getBindingCount() + 1);
         return new byte[]{from, to};
+    }
+
+    public int getPressedIndex() {
+        return pressedIndex;
     }
 
     private Binding getBindingByPosition(float x, float y) {
@@ -88,6 +93,12 @@ public class RangeScroller {
         lastPosition = element.getOrientation() == 0 ? x : y;
         element.setBinding(Binding.NONE);
 
+        Rect boundingBox = element.getBoundingBox();
+        float offset = element.getOrientation() == 0 ? x - boundingBox.left - currentOffset : y - boundingBox.top - currentOffset;
+        pressedIndex = (int)Math.floor((offset / getElementSize()) % element.getRange().max);
+        if (pressedIndex < 0) pressedIndex = element.getRange().max + pressedIndex;
+        inputControlsView.invalidate();
+
         timer = new Timer(true);
         timer.schedule(new TimerTask() {
             @Override
@@ -131,5 +142,7 @@ public class RangeScroller {
             else inputControlsView.handleInputEvent(binding, false);
         }
         isActionDown = false;
+        pressedIndex = -1;
+        inputControlsView.invalidate();
     }
 }
