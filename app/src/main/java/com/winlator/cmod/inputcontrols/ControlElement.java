@@ -267,6 +267,7 @@ public class ControlElement {
                         break;
                 }
                 break;
+
             case D_PAD: {
                 halfWidth = snappingSize * 7;
                 halfHeight = snappingSize * 7;
@@ -358,10 +359,10 @@ public class ControlElement {
                 float cx = boundingBox.centerX();
                 float cy = boundingBox.centerY();
 
-                // Визуальный отклик при нажатии - рисуем СНАЧАЛА заливку
+
                 if (states[0]) {
                     paint.setStyle(Paint.Style.FILL);
-                    paint.setColor(ColorUtils.setAlphaComponent(0xFF00BFFF, 77)); // Голубой цвет с 30% прозрачностью
+                    paint.setColor(ColorUtils.setAlphaComponent(0xFF00BFFF, 77));
                     switch (shape) {
                         case CIRCLE:
                             canvas.drawCircle(cx, cy, boundingBox.width() * 0.5f, paint);
@@ -380,7 +381,7 @@ public class ControlElement {
                             break;
                         }
                     }
-                    // Восстанавливаем стиль и цвет для контура
+
                     paint.setColor(selected ? inputControlsView.getSecondaryColor() : primaryColor);
                     paint.setStyle(Paint.Style.STROKE);
                 }
@@ -427,6 +428,62 @@ public class ControlElement {
                 float offsetY = snappingSize * 3 * scale;
                 float start = snappingSize * scale;
                 Path path = inputControlsView.getPath();
+
+
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(ColorUtils.setAlphaComponent(0xFF00BFFF, 77));
+
+
+                if (states[0]) {
+                    path.reset();
+                    path.moveTo(cx, cy - start);
+                    path.lineTo(cx - offsetX, cy - offsetY);
+                    path.lineTo(cx - offsetX, boundingBox.top);
+                    path.lineTo(cx + offsetX, boundingBox.top);
+                    path.lineTo(cx + offsetX, cy - offsetY);
+                    path.close();
+                    canvas.drawPath(path, paint);
+                }
+
+
+                if (states[3]) {
+                    path.reset();
+                    path.moveTo(cx - start, cy);
+                    path.lineTo(cx - offsetY, cy - offsetX);
+                    path.lineTo(boundingBox.left, cy - offsetX);
+                    path.lineTo(boundingBox.left, cy + offsetX);
+                    path.lineTo(cx - offsetY, cy + offsetX);
+                    path.close();
+                    canvas.drawPath(path, paint);
+                }
+
+
+                if (states[2]) {
+                    path.reset();
+                    path.moveTo(cx, cy + start);
+                    path.lineTo(cx - offsetX, cy + offsetY);
+                    path.lineTo(cx - offsetX, boundingBox.bottom);
+                    path.lineTo(cx + offsetX, boundingBox.bottom);
+                    path.lineTo(cx + offsetX, cy + offsetY);
+                    path.close();
+                    canvas.drawPath(path, paint);
+                }
+
+
+                if (states[1]) {
+                    path.reset();
+                    path.moveTo(cx + start, cy);
+                    path.lineTo(cx + offsetY, cy - offsetX);
+                    path.lineTo(boundingBox.right, cy - offsetX);
+                    path.lineTo(boundingBox.right, cy + offsetX);
+                    path.lineTo(cx + offsetY, cy + offsetX);
+                    path.close();
+                    canvas.drawPath(path, paint);
+                }
+
+
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(selected ? inputControlsView.getSecondaryColor() : primaryColor);
                 path.reset();
 
                 path.moveTo(cx, cy - start);
@@ -762,6 +819,7 @@ public class ControlElement {
                     inputControlsView.handleInputEvent(binding, state, value);
                     this.states[i] = state;
                 }
+                inputControlsView.invalidate();
             }
 
             return true;
