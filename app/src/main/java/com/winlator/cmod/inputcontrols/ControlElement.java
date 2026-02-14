@@ -358,24 +358,54 @@ public class ControlElement {
                 float cx = boundingBox.centerX();
                 float cy = boundingBox.centerY();
 
-                switch (shape) {
-                    case CIRCLE:
-                        canvas.drawCircle(cx, cy, boundingBox.width() * 0.5f, paint);
-                        break;
-                    case RECT:
-                        canvas.drawRect(boundingBox, paint);
-                        break;
-                    case ROUND_RECT: {
-                        float radius = boundingBox.height() * 0.5f;
-                        canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
-                        break;
+                // Визуальный отклик при нажатии - рисуем СНАЧАЛА заливку
+                if (states[0]) {
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setColor(ColorUtils.setAlphaComponent(0xFF00BFFF, 77)); // Голубой цвет с 30% прозрачностью
+                    switch (shape) {
+                        case CIRCLE:
+                            canvas.drawCircle(cx, cy, boundingBox.width() * 0.5f, paint);
+                            break;
+                        case RECT:
+                            canvas.drawRect(boundingBox, paint);
+                            break;
+                        case ROUND_RECT: {
+                            float radius = boundingBox.height() * 0.5f;
+                            canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
+                            break;
+                        }
+                        case SQUARE: {
+                            float radius = snappingSize * 0.75f * scale;
+                            canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
+                            break;
+                        }
                     }
-                    case SQUARE: {
-                        float radius = snappingSize * 0.75f * scale;
-                        canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
-                        break;
+                    // Восстанавливаем стиль и цвет для контура
+                    paint.setColor(selected ? inputControlsView.getSecondaryColor() : primaryColor);
+                    paint.setStyle(Paint.Style.STROKE);
+                }
+
+                if (!states[0]) {
+                    switch (shape) {
+                        case CIRCLE:
+                            canvas.drawCircle(cx, cy, boundingBox.width() * 0.5f, paint);
+                            break;
+                        case RECT:
+                            canvas.drawRect(boundingBox, paint);
+                            break;
+                        case ROUND_RECT: {
+                            float radius = boundingBox.height() * 0.5f;
+                            canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
+                            break;
+                        }
+                        case SQUARE: {
+                            float radius = snappingSize * 0.75f * scale;
+                            canvas.drawRoundRect(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.bottom, radius, radius, paint);
+                            break;
+                        }
                     }
                 }
+
 
                 if (iconId > 0) {
                     drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId);
@@ -457,6 +487,13 @@ public class ControlElement {
                         paint.setStyle(Paint.Style.STROKE);
                         paint.setColor(oldColor);
 
+
+                        if (scroller.getPressedIndex() == index) {
+                            paint.setStyle(Paint.Style.FILL);
+                            paint.setColor(ColorUtils.setAlphaComponent(0xFF00BFFF, 77));
+                            canvas.drawRoundRect(startX, boundingBox.top, startX + elementSize, boundingBox.bottom, radius, radius, paint);
+                        }
+
                         if (startX > boundingBox.left && startX  < boundingBox.right) canvas.drawLine(startX, lineTop, startX, lineBottom, paint);
                         String text = getRangeTextForIndex(range, index);
 
@@ -488,6 +525,12 @@ public class ControlElement {
                     for (byte i = rangeIndex[0]; i < rangeIndex[1]; i++) {
                         paint.setStyle(Paint.Style.STROKE);
                         paint.setColor(oldColor);
+
+                        if (scroller.getPressedIndex() == i) {
+                            paint.setStyle(Paint.Style.FILL);
+                            paint.setColor(ColorUtils.setAlphaComponent(0xFF00BFFF, 77));
+                            canvas.drawRoundRect(boundingBox.left, startY, boundingBox.right, startY + elementSize, radius, radius, paint);
+                        }
 
                         if (startY > boundingBox.top && startY < boundingBox.bottom) canvas.drawLine(lineLeft, startY, lineRight, startY, paint);
                         String text = getRangeTextForIndex(range, i);
@@ -597,9 +640,12 @@ public class ControlElement {
     }
 
     public boolean handleTouchDown(int pointerId, float x, float y) {
+
         if (currentPointerId == -1 && containsPoint(x, y)) {
             currentPointerId = pointerId;
             if (type == Type.BUTTON) {
+                states[0] = true;
+                inputControlsView.invalidate();
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
                 if (!toggleSwitch || !selected) inputControlsView.handleInputEvent(getBindingAt(0), true);
                 return true;
@@ -731,6 +777,8 @@ public class ControlElement {
         if (pointerId == currentPointerId) {
             if (type == Type.BUTTON) {
                 Binding binding = getBindingAt(0);
+                states[0] = false;
+                inputControlsView.invalidate();
                 if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
                     selected = (System.currentTimeMillis() - (long)touchTime) > BUTTON_MIN_TIME_TO_KEEP_PRESSED;
                     if (!selected) inputControlsView.handleInputEvent(binding, false);
