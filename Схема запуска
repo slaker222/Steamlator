@@ -1,0 +1,6 @@
+1. XrActivity.openIntent() → запуск активности с container_id
+2. ContainerManager.activateContainer() → активация контейнера через symlink
+3. Настройка переменных окружения (Wine, DXVK, Zink, Mesa)
+4. ProcessHelper.exec() → запуск команды через ProcessBuilder
+5. Эмулятор (FEXCore/Box64) → эмуляция x86/x64 на ARM
+6. Wine → запуск exe файла в эмулированном Windows окружении

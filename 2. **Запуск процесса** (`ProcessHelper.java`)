@@ -1,0 +1,10 @@
+public static int exec(String command, String[] envp, File workingDir, Callback<Integer> terminationCallback) {
+    ProcessBuilder pb = new ProcessBuilder(splitCommand(command));
+    pb.directory(workingDir);
+    pb.environment().putAll(EnvironmentManager.getEnvVars());
+    java.lang.Process process = pb.start();
+    // Получение PID через reflection
+    Field pidField = process.getClass().getDeclaredField("pid");
+    pidField.setAccessible(true);
+    pid = pidField.getInt(process);
+}
