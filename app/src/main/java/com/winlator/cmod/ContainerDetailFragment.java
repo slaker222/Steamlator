@@ -45,6 +45,7 @@ import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
 import com.winlator.cmod.contentdialog.ShortcutSettingsDialog;
 import com.winlator.cmod.contentdialog.VKD3DConfigDialog;
+import com.winlator.cmod.contentdialog.Wined3DConfigDialog;
 import com.winlator.cmod.contents.ContentProfile;
 import com.winlator.cmod.contents.ContentsManager;
 import com.winlator.cmod.core.AppUtils;
@@ -79,6 +80,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Executors;
 
 public class ContainerDetailFragment extends Fragment {
 
@@ -199,17 +201,8 @@ public class ContainerDetailFragment extends Fragment {
         Spinner SCSMT = view.findViewById(R.id.SCSMT);
         SCSMT.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
 
-        Spinner SGPUName = view.findViewById(R.id.SGPUName);
-        SGPUName.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-
-        Spinner sOffscreenRenderingMode = view.findViewById(R.id.SOffscreenRenderingMode);
-        sOffscreenRenderingMode.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-
         Spinner sStrictShaderMath = view.findViewById(R.id.SStrictShaderMath);
         sStrictShaderMath.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
-
-        Spinner sVideoMemorySize = view.findViewById(R.id.SVideoMemorySize);
-        sVideoMemorySize.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
 
         Spinner sMouseWarpOverride = view.findViewById(R.id.SMouseWarpOverride);
         sMouseWarpOverride.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
@@ -379,11 +372,21 @@ public class ContainerDetailFragment extends Fragment {
         final Spinner sDDrawrapper = view.findViewById(R.id.SDDrawrapper);
 
         final View vDXWrapperConfig = view.findViewById(R.id.BTDXWrapperConfig);
-        vDXWrapperConfig.setTag(isEditMode() ? container.getDXWrapperConfig() : Container.DEFAULT_DXWRAPPERCONFIG);
+        // Load appropriate config based on what will be selected
+        String dxwrapperValue = isEditMode() ? container.getDXWrapper() : Container.DEFAULT_DXWRAPPER;
+        if ("wined3d".equals(dxwrapperValue)) {
+            vDXWrapperConfig.setTag(loadWined3DConfig(view));
+        } else {
+            vDXWrapperConfig.setTag(isEditMode() ? container.getDXWrapperConfig() : Container.DEFAULT_DXWRAPPERCONFIG);
+        }
 
         final View vGraphicsDriverConfig = view.findViewById(R.id.BTGraphicsDriverConfig);
 
-        setupDXWrapperSpinner(sDXWrapper, vDXWrapperConfig);
+        setupDXWrapperSpinner(sDXWrapper, vDXWrapperConfig, () -> {
+            vDXWrapperConfig.setTag(loadWined3DConfig(view));
+            showWined3DConfigDialog(vDXWrapperConfig);
+        });
+        
         setupDDrawSpinner(sDDrawrapper, isEditMode() ? container.getDDrawWrapper() : Container.DEFAULT_DDRAWRAPPER);
         loadGraphicsDriverSpinner(sGraphicsDriver, sDXWrapper, vGraphicsDriverConfig,
                 isEditMode() ? container.getGraphicsDriver() : Container.DEFAULT_GRAPHICS_DRIVER,
@@ -403,6 +406,12 @@ public class ContainerDetailFragment extends Fragment {
 
         final CheckBox cbShowFPS = view.findViewById(R.id.CBShowFPS);
         cbShowFPS.setChecked(isEditMode() && container.isShowFPS());
+
+        final CheckBox cbQuickHUD = view.findViewById(R.id.CBQuickHUD);
+        cbQuickHUD.setChecked(isEditMode() ? container.isQuickHUD() : true);
+
+        final CheckBox cbDebugOverlay = view.findViewById(R.id.CBDebugOverlay);
+        cbDebugOverlay.setChecked(isEditMode() && container.isDebugOverlay());
 
         final CheckBox cbFullscreenStretched = view.findViewById(R.id.CBFullscreenStretched);
         cbFullscreenStretched.setChecked(isEditMode() && container.isFullscreenStretched());
@@ -547,6 +556,30 @@ public class ContainerDetailFragment extends Fragment {
             tabLayout.setBackgroundResource(R.drawable.tab_layout_background);
         }
 
+        View btOpenWinecfg = view.findViewById(R.id.BTOpenWinecfg);
+        View btOpenRegedit = view.findViewById(R.id.BTOpenRegedit);
+        if (isEditMode()) {
+            btOpenWinecfg.setVisibility(View.VISIBLE);
+            btOpenWinecfg.setOnClickListener(v -> {
+                Intent intent = new Intent(getContext(), WinecfgOverlayActivity.class);
+                intent.putExtra("container_id", container.id);
+                intent.putExtra("exec_path", "C:/windows/system32/winecfg.exe");
+                intent.putExtra("winecfg_overlay_mode", true);
+                startActivity(intent);
+            });
+            btOpenRegedit.setVisibility(View.VISIBLE);
+            btOpenRegedit.setOnClickListener(v -> {
+                Intent intent = new Intent(getContext(), WinecfgOverlayActivity.class);
+                intent.putExtra("container_id", container.id);
+                intent.putExtra("exec_path", "C:/windows/regedit.exe");
+                intent.putExtra("winecfg_overlay_mode", true);
+                startActivity(intent);
+            });
+        } else {
+            btOpenWinecfg.setVisibility(View.GONE);
+            btOpenRegedit.setVisibility(View.GONE);
+        }
+
         // Set up confirm button
         view.findViewById(R.id.BTConfirm).setOnClickListener((v) -> {
             try {
@@ -566,6 +599,8 @@ public class ContainerDetailFragment extends Fragment {
                 String blacklistedExtensions = this.blacklistedExtensions;
                 String drives = getDrives(view);
                 boolean showFPS = cbShowFPS.isChecked();
+                boolean debugOverlay = cbDebugOverlay.isChecked();
+                boolean quickHUD = cbQuickHUD.isChecked();
                 boolean fullscreenStretched = cbFullscreenStretched.isChecked();
                 String cpuList = cpuListView.getCheckedCPUListAsString();
                 String cpuListWoW64 = cpuListViewWoW64.getCheckedCPUListAsString();
@@ -603,44 +638,74 @@ public class ContainerDetailFragment extends Fragment {
                     }
                 }
 
-
+                final String finalEnvVars = envVars;
+                final int finalInputTypeValue = finalInputType;
 
                 if (isEditMode()) {
-                    // Update existing container properties
-                    container.setName(name);
-                    container.setScreenSize(screenSize);
-                    container.setEnvVars(envVars);
-                    container.setCPUList(cpuList);
-                    container.setCPUListWoW64(cpuListWoW64);
-                    container.setGraphicsDriver(graphicsDriver);
-                    container.setWrapperGraphicsDriverVersion(wrapperGraphicsDriverVersion);
-                    container.setOldWrapperGraphicsDriverVersion(oldWrapperGraphicsDriverVersion);
-                    container.setDXWrapper(dxwrapper);
-                    container.setDDrawWrapper(ddrawrapper);
-                    container.setDXWrapperConfig(dxwrapperConfig);
-                    container.setAudioDriver(audioDriver);
-                    container.setEmulator(emulator);
-                    container.setWinComponents(wincomponents);
-                    container.setBlacklistedExtensions(blacklistedExtensions);
-                    container.setDrives(drives);
-                    container.setShowFPS(showFPS);
-                    container.setFullscreenStretched(fullscreenStretched);
-                    container.setInputType(finalInputType);
-                    container.setWoW64Mode(wow64Mode);
-                    container.setStartupSelection(startupSelection);
-                    container.setBox64Version(box64Version);
-                    container.setBox64Preset(box64Preset);
-                    container.setFEXCoreVersion(fexcoreVersion);
-                    container.setDesktopTheme(desktopTheme);
-                    container.setRcfileId(rcfileId);
-                    container.setMidiSoundFont(midiSoundFont);
-                    container.setLC_ALL(lc_all);
-                    container.setPrimaryController(primaryController);
-                    container.setControllerMapping(controllerMapping);
-                    container.saveData();
-                    saveWineRegistryKeys(view);
-                    FEXCoreManager.saveFEXCoreSpinners(container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
-                    getActivity().onBackPressed();
+                    String selectedWineVersion = sWineVersion.getSelectedItem().toString();
+                    Runnable applyEditedContainerFields = () -> {
+                        container.setName(name);
+                        container.setScreenSize(screenSize);
+                        container.setEnvVars(finalEnvVars);
+                        container.setCPUList(cpuList);
+                        container.setCPUListWoW64(cpuListWoW64);
+                        container.setGraphicsDriver(graphicsDriver);
+                        container.setWrapperGraphicsDriverVersion(wrapperGraphicsDriverVersion);
+                        container.setOldWrapperGraphicsDriverVersion(oldWrapperGraphicsDriverVersion);
+                        container.setDXWrapper(dxwrapper);
+                        container.setDDrawWrapper(ddrawrapper);
+                        container.setDXWrapperConfig(dxwrapperConfig);
+                        container.setAudioDriver(audioDriver);
+                        container.setEmulator(emulator);
+                        container.setWinComponents(wincomponents);
+                        container.setBlacklistedExtensions(blacklistedExtensions);
+                        container.setDrives(drives);
+                        container.setShowFPS(showFPS);
+                        container.setDebugOverlay(debugOverlay);
+                        container.setQuickHUD(quickHUD);
+                        container.setFullscreenStretched(fullscreenStretched);
+                        container.setInputType(finalInputTypeValue);
+                        container.setWoW64Mode(wow64Mode);
+                        container.setStartupSelection(startupSelection);
+                        container.setBox64Version(box64Version);
+                        container.setBox64Preset(box64Preset);
+                        container.setFEXCoreVersion(fexcoreVersion);
+                        container.setDesktopTheme(desktopTheme);
+                        container.setRcfileId(rcfileId);
+                        container.setMidiSoundFont(midiSoundFont);
+                        container.setLC_ALL(lc_all);
+                        container.setPrimaryController(primaryController);
+                        container.setControllerMapping(controllerMapping);
+                        container.setWineVersion(selectedWineVersion);
+                        container.saveData();
+                        saveWineRegistryKeys(view);
+                        FEXCoreManager.saveFEXCoreSpinners(container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
+                    };
+
+                    if (!selectedWineVersion.equals(container.getWineVersion())) {
+                        WineInfo oldWineInfo = WineInfo.fromIdentifier(context, container.getWineVersion());
+                        WineInfo newWineInfo = WineInfo.fromIdentifier(context, selectedWineVersion);
+                        if (oldWineInfo.isArm64EC() != newWineInfo.isArm64EC()) {
+                            ContentDialog.alert(context, getString(R.string.wine_switch_arch_mismatch), null);
+                            return;
+                        }
+                        preloaderDialog.showOnUiThread(R.string.updating_wine_prefix);
+                        Executors.newSingleThreadExecutor().execute(() -> {
+                            boolean ok = manager.resyncWineCommonDlls(selectedWineVersion, container.getRootDir());
+                            requireActivity().runOnUiThread(() -> {
+                                preloaderDialog.close();
+                                if (!ok) {
+                                    Toast.makeText(context, R.string.wine_prefix_update_failed, Toast.LENGTH_LONG).show();
+                                    return;
+                                }
+                                applyEditedContainerFields.run();
+                                getActivity().onBackPressed();
+                            });
+                        });
+                    } else {
+                        applyEditedContainerFields.run();
+                        getActivity().onBackPressed();
+                    }
                 } else {
                     // Create new container with specified properties
                     JSONObject data = new JSONObject();
@@ -661,6 +726,8 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("blacklistedextensions", blacklistedExtensions);
                     data.put("drives", drives);
                     data.put("showFPS", showFPS);
+                    data.put("debugOverlay", debugOverlay);
+                    data.put("quickHUD", quickHUD);
                     data.put("fullscreenStretched", fullscreenStretched);
                     data.put("inputType", finalInputType);
                     data.put("wow64Mode", wow64Mode);
@@ -705,35 +772,40 @@ public class ContainerDetailFragment extends Fragment {
 
     private void saveWineRegistryKeys(View view) {
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
+        if (!userRegFile.exists()) {
+            return; // Registry file doesn't exist yet, skip
+        }
+        
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             Spinner sCSMT = view.findViewById(R.id.SCSMT);
             registryEditor.setDwordValue("Software\\Wine\\Direct3D", "csmt", sCSMT.getSelectedItemPosition() != 0 ? 3 : 0);
 
-            Spinner sGPUName = view.findViewById(R.id.SGPUName);
-            try {
-                JSONObject gpuName = gpuCards.getJSONObject(sGPUName.getSelectedItemPosition());
-                registryEditor.setDwordValue("Software\\Wine\\Direct3D", "VideoPciDeviceID", gpuName.getInt("deviceID"));
-                registryEditor.setDwordValue("Software\\Wine\\Direct3D", "VideoPciVendorID", gpuName.getInt("vendorID"));
+            Spinner sDXWrapper = view.findViewById(R.id.SDXWrapper);
+            String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
+            
+            if ("wined3d".equals(dxwrapper)) {
+                View vDXWrapperConfig = view.findViewById(R.id.BTDXWrapperConfig);
+                Object configTag = vDXWrapperConfig.getTag();
+                if (configTag != null) {
+                    KeyValueSet wined3dConfig = Wined3DConfigDialog.parseConfig(configTag);
+                    int gpuDeviceId = Integer.parseInt(wined3dConfig.get("gpuDeviceID"));
+                    registryEditor.setDwordValue("Software\\Wine\\Direct3D", "VideoPciDeviceID", gpuDeviceId);
+                    registryEditor.setDwordValue("Software\\Wine\\Direct3D", "VideoPciVendorID", getGpuVendorId(gpuDeviceId));
+                    registryEditor.setStringValue("Software\\Wine\\Direct3D", "OffScreenRenderingMode", wined3dConfig.get("offscreenRenderingMode"));
+                    registryEditor.setStringValue("Software\\Wine\\Direct3D", "VideoMemorySize", wined3dConfig.get("videoMemorySize"));
+                }
             }
-            catch (JSONException e) {}
-
-            Spinner sOffscreenRenderingMode = view.findViewById(R.id.SOffscreenRenderingMode);
-            registryEditor.setStringValue("Software\\Wine\\Direct3D", "OffScreenRenderingMode", sOffscreenRenderingMode.getSelectedItem().toString().toLowerCase(Locale.ENGLISH));
 
             Spinner sStrictShaderMath = view.findViewById(R.id.SStrictShaderMath);
             registryEditor.setDwordValue("Software\\Wine\\Direct3D", "strict_shader_math", sStrictShaderMath.getSelectedItemPosition());
-
-            Spinner sVideoMemorySize = view.findViewById(R.id.SVideoMemorySize);
-            String videoMemorySize = StringUtils.parseNumber(sVideoMemorySize.getSelectedItem());
-            if (videoMemorySize.equals("0"))
-                videoMemorySize = String.valueOf(GPUInformation.getMemorySize());
-            registryEditor.setStringValue("Software\\Wine\\Direct3D", "VideoMemorySize", videoMemorySize);
 
             Spinner sMouseWarpOverride = view.findViewById(R.id.SMouseWarpOverride);
             registryEditor.setStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", sMouseWarpOverride.getSelectedItem().toString().toLowerCase(Locale.ENGLISH));
 
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "shader_backend", "glsl");
             registryEditor.setStringValue("Software\\Wine\\Direct3D", "UseGLSL", "enabled");
+        } catch (Exception e) {
+            Log.e("ContainerDetailFragment", "Error saving Wine registry keys", e);
         }
     }
 
@@ -777,19 +849,40 @@ public class ContainerDetailFragment extends Fragment {
             sCSMT.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, stateList));
             sCSMT.setSelection(registryEditor.getDwordValue("Software\\Wine\\Direct3D", "csmt", 3) != 0 ? 1 : 0);
 
-            Spinner sGPUName = view.findViewById(R.id.SGPUName);
-            loadGPUNameSpinner(sGPUName, registryEditor.getDwordValue("Software\\Wine\\Direct3D", "VideoPciDeviceID", 1728));
-
-            List<String> offscreenRenderingModeList = Arrays.asList("Backbuffer", "FBO");
-            Spinner sOffscreenRenderingMode = view.findViewById(R.id.SOffscreenRenderingMode);
-            sOffscreenRenderingMode.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, offscreenRenderingModeList));
-            AppUtils.setSpinnerSelectionFromValue(sOffscreenRenderingMode, registryEditor.getStringValue("Software\\Wine\\Direct3D", "OffScreenRenderingMode", "fbo"));
-
             Spinner sStrictShaderMath = view.findViewById(R.id.SStrictShaderMath);
             sStrictShaderMath.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, stateList));
             sStrictShaderMath.setSelection(Math.min(registryEditor.getDwordValue("Software\\Wine\\Direct3D", "strict_shader_math", 1), 1));
 
-            Spinner sVideoMemorySize = view.findViewById(R.id.SVideoMemorySize);
+            List<String> mouseWarpOverrideList = Arrays.asList(context.getString(R.string.disable), context.getString(R.string.enable), context.getString(R.string.force));
+            Spinner sMouseWarpOverride = view.findViewById(R.id.SMouseWarpOverride);
+            sMouseWarpOverride.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, mouseWarpOverrideList));
+            AppUtils.setSpinnerSelectionFromValue(sMouseWarpOverride, registryEditor.getStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", "disable"));
+        }
+    }
+
+    private int getGpuVendorId(int selectedDeviceID) {
+        try {
+            for (int i = 0; i < gpuCards.length(); i++) {
+                JSONObject item = gpuCards.getJSONObject(i);
+                if (item.getInt("deviceID") == selectedDeviceID) {
+                    return item.getInt("vendorID");
+                }
+            }
+        }
+        catch (JSONException e) {}
+        return 4318;
+    }
+
+    private String loadWined3DConfig(View view) {
+        if (!isEditMode()) {
+            // Container is being created, use default config
+            return Wined3DConfigDialog.DEFAULT_CONFIG;
+        }
+        
+        File containerDir = container.getRootDir();
+        File userRegFile = new File(containerDir, ".wine/user.reg");
+
+        try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             String videoMemorySize = registryEditor.getStringValue("Software\\Wine\\Direct3D", "VideoMemorySize", "2048");
             ArrayList<String> memorySizeValues = new ArrayList<>(Arrays.asList(getResources().getStringArray(R.array.video_memory_size_entries)));
             boolean foundMemory = false;
@@ -800,32 +893,20 @@ public class ContainerDetailFragment extends Fragment {
                     break;
                 }
             }
-            if (!foundMemory)
-                videoMemorySize = "0";
-            AppUtils.setSpinnerSelectionFromNumber(sVideoMemorySize, videoMemorySize);
+            if (!foundMemory) videoMemorySize = String.valueOf(GPUInformation.getMemorySize());
 
-            List<String> mouseWarpOverrideList = Arrays.asList(context.getString(R.string.disable), context.getString(R.string.enable), context.getString(R.string.force));
-            Spinner sMouseWarpOverride = view.findViewById(R.id.SMouseWarpOverride);
-            sMouseWarpOverride.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, mouseWarpOverrideList));
-            AppUtils.setSpinnerSelectionFromValue(sMouseWarpOverride, registryEditor.getStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", "disable"));
+            KeyValueSet config = new KeyValueSet();
+            config.put("gpuDeviceID", String.valueOf(registryEditor.getDwordValue("Software\\Wine\\Direct3D", "VideoPciDeviceID", 1728)));
+            config.put("offscreenRenderingMode", registryEditor.getStringValue("Software\\Wine\\Direct3D", "OffScreenRenderingMode", "fbo"));
+            config.put("videoMemorySize", videoMemorySize);
+            return config.toString();
+        } catch (Exception e) {
+            return Wined3DConfigDialog.DEFAULT_CONFIG;
         }
     }
 
-    private void loadGPUNameSpinner(Spinner spinner, int selectedDeviceID) {
-        List<String> values = new ArrayList<>();
-        int selectedPosition = 0;
-
-        try {
-            for (int i = 0; i < gpuCards.length(); i++) {
-                JSONObject item = gpuCards.getJSONObject(i);
-                if (item.getInt("deviceID") == selectedDeviceID) selectedPosition = i;
-                values.add(item.getString("name"));
-            }
-        }
-        catch (JSONException e) {}
-
-        spinner.setAdapter(new ArrayAdapter<>(getContext(), android.R.layout.simple_spinner_dropdown_item, values));
-        spinner.setSelection(selectedPosition);
+    private void showWined3DConfigDialog(View anchor) {
+        new Wined3DConfigDialog(anchor, gpuCards).show();
     }
 
     public static String getScreenSize(View view) {
@@ -938,7 +1019,7 @@ public class ContainerDetailFragment extends Fragment {
         update.run();
     }
 
-    public static void setupDXWrapperSpinner(final Spinner sDXWrapper, final View vDXWrapperConfig) {
+    public static void setupDXWrapperSpinner(final Spinner sDXWrapper, final View vDXWrapperConfig, @Nullable final Runnable wined3dCallback) {
         sDXWrapper.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
@@ -950,6 +1031,12 @@ public class ContainerDetailFragment extends Fragment {
                 else if (dxwrapper.equals("vkd3d")) {
                     vDXWrapperConfig.setOnClickListener((v) -> (new VKD3DConfigDialog(vDXWrapperConfig)).show());
                     vDXWrapperConfig.setVisibility(View.VISIBLE);
+                }
+                else if (dxwrapper.equals("wined3d")) {
+                    if (wined3dCallback != null) {
+                        vDXWrapperConfig.setOnClickListener((v) -> wined3dCallback.run());
+                        vDXWrapperConfig.setVisibility(View.VISIBLE);
+                    } else vDXWrapperConfig.setVisibility(View.GONE);
                 } else vDXWrapperConfig.setVisibility(View.GONE);
             }
 
@@ -959,6 +1046,10 @@ public class ContainerDetailFragment extends Fragment {
     }
 
     public static void setupDDrawSpinner(final Spinner sDDrawspinner, String selectedDDrawrapper) {
+        setupDDrawSpinner(sDDrawspinner, null, null, selectedDDrawrapper);
+    }
+
+    public static void setupDDrawSpinner(final Spinner sDDrawspinner, @Nullable final View vDDrawWrapperConfig, @Nullable final Runnable configCallback, String selectedDDrawrapper) {
         final Context context = sDDrawspinner.getContext();
         ArrayList<String> items = new ArrayList<>();
         for (String value : context.getResources().getStringArray(R.array.ddrawrapper_entries)) {
@@ -966,6 +1057,26 @@ public class ContainerDetailFragment extends Fragment {
         }
         sDDrawspinner.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray(new String[0])));
         AppUtils.setSpinnerSelectionFromIdentifier(sDDrawspinner, selectedDDrawrapper);
+
+        if (vDDrawWrapperConfig == null) return;
+
+        Runnable update = () -> {
+            String ddrawrapper = StringUtils.parseIdentifier(sDDrawspinner.getSelectedItem());
+            boolean showConfig = "wined3d".equals(ddrawrapper);
+            vDDrawWrapperConfig.setVisibility(showConfig ? View.VISIBLE : View.GONE);
+            vDDrawWrapperConfig.setOnClickListener(showConfig && configCallback != null ? v -> configCallback.run() : null);
+        };
+
+        sDDrawspinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                update.run();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+        update.run();
     }
 
 
@@ -1135,8 +1246,9 @@ public class ContainerDetailFragment extends Fragment {
 
     private void loadWineVersionSpinner(final View view, Spinner sWineVersion, Spinner sBox64Version) {
         final Context context = getContext();
-        sWineVersion.setEnabled(!isEditMode());
-//
+        final TextView tvWineVersionInfo = view.findViewById(R.id.TVWineVersionInfo);
+        sWineVersion.setEnabled(true);
+
         sWineVersion.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> parent, View v, int position, long id) {
@@ -1156,6 +1268,7 @@ public class ContainerDetailFragment extends Fragment {
                     sEmulator.setSelection(1);
 
                 }
+                updateWineVersionInfo(tvWineVersionInfo, wineInfo);
                 loadBox64VersionSpinner(context, container, contentsManager, sBox64Version, wineInfo.isArm64EC());
                 cbWoW64Mode.setEnabled(true); // Always allow user to toggle WoW64 mode
             }
@@ -1174,6 +1287,7 @@ public class ContainerDetailFragment extends Fragment {
                     sEmulator.setEnabled(false);
                     sEmulator.setSelection(1);
                 }
+                updateWineVersionInfo(tvWineVersionInfo, wineInfo);
                 loadBox64VersionSpinner(context, container, contentsManager, sBox64Version, wineInfo.isArm64EC());
             }
         });
@@ -1187,6 +1301,12 @@ public class ContainerDetailFragment extends Fragment {
             wineVersions.add(ContentsManager.getEntryName(profile));
         sWineVersion.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, wineVersions));
         if (isEditMode()) AppUtils.setSpinnerSelectionFromValue(sWineVersion, container.getWineVersion());
+        updateWineVersionInfo(tvWineVersionInfo, WineInfo.fromIdentifier(context, sWineVersion.getSelectedItem().toString()));
+    }
+
+    private void updateWineVersionInfo(TextView wineVersionInfo, WineInfo wineInfo) {
+        wineVersionInfo.setText(getString(R.string.wine_version_target_info,
+                wineInfo.isArm64EC() ? "ARM64EC" : "x86_64"));
     }
 
     public String getControllerMapping(View view) {

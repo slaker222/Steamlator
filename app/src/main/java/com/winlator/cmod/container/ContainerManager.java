@@ -185,6 +185,8 @@ public class ContainerManager {
         dstContainer.setWinComponents(srcContainer.getWinComponents());
         dstContainer.setDrives(srcContainer.getDrives());
         dstContainer.setShowFPS(srcContainer.isShowFPS());
+        dstContainer.setDebugOverlay(srcContainer.isDebugOverlay());
+        dstContainer.setQuickHUD(srcContainer.isQuickHUD());
         dstContainer.setWoW64Mode(srcContainer.isWoW64Mode());
         dstContainer.setStartupSelection(srcContainer.getStartupSelection());
         dstContainer.setBox64Preset(srcContainer.getBox64Preset());
@@ -229,19 +231,44 @@ public class ContainerManager {
         return null;
     }
 
-    private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, JSONObject commonDlls, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
+    private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, JSONObject commonDlls, File containerDir, OnExtractFileListener onExtractFileListener, boolean skipIfDstExists) throws JSONException {
         File srcDir = new File(wineInfo.path + "/lib/wine/" + srcName);
         JSONArray dlnames = commonDlls.getJSONArray(dstName);
 
         for (int i = 0; i < dlnames.length(); i++) {
             String dlname = dlnames.getString(i);
             File dstFile = new File(containerDir, ".wine/drive_c/windows/"+dstName+"/"+dlname);
-            if (dstFile.exists()) continue;
+            if (skipIfDstExists && dstFile.exists()) continue;
             if (onExtractFileListener != null ) {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            FileUtils.copy(new File(srcDir, dlname), dstFile);
+            File srcFile = new File(srcDir, dlname);
+            if (!srcFile.isFile()) continue;
+            FileUtils.copy(srcFile, dstFile);
+        }
+    }
+
+    /**
+     * Overwrites Wine PEs listed in {@code common_dlls.json} from the selected {@code wineVersion}
+     * into {@code containerDir}/.wine/drive_c/windows. Does not re-extract the full container pattern
+     * (user data under drive_c is preserved). Intended for switching Wine builds of the same ABI
+     * class (x86_64 vs arm64ec).
+     */
+    public boolean resyncWineCommonDlls(String wineVersion, File containerDir) {
+        WineInfo wineInfo = WineInfo.fromIdentifier(context, wineVersion);
+        try {
+            JSONObject commonDlls = new JSONObject(FileUtils.readString(context, "common_dlls.json"));
+            if (wineInfo.isArm64EC()) {
+                extractCommonDlls(wineInfo, "aarch64-windows", "system32", commonDlls, containerDir, null, false);
+            } else {
+                extractCommonDlls(wineInfo, "x86_64-windows", "system32", commonDlls, containerDir, null, false);
+                extractCommonDlls(wineInfo, "i386-windows", "syswow64", commonDlls, containerDir, null, false);
+            }
+            return true;
+        } catch (JSONException e) {
+            Log.e("ContainerManager", "resyncWineCommonDlls", e);
+            return false;
         }
     }
 
@@ -256,11 +283,11 @@ public class ContainerManager {
             try {
                 JSONObject commonDlls = new JSONObject(FileUtils.readString(context, "common_dlls.json"));
                 if (wineInfo.isArm64EC())
-                    extractCommonDlls(wineInfo, "aarch64-windows", "system32", commonDlls, containerDir, onExtractFileListener); // arm64ec only
+                    extractCommonDlls(wineInfo, "aarch64-windows", "system32", commonDlls, containerDir, onExtractFileListener, true); // arm64ec only
                 else
-                    extractCommonDlls(wineInfo, "x86_64-windows", "system32", commonDlls, containerDir, onExtractFileListener);
+                    extractCommonDlls(wineInfo, "x86_64-windows", "system32", commonDlls, containerDir, onExtractFileListener, true);
 
-                extractCommonDlls(wineInfo, "i386-windows", "syswow64", commonDlls, containerDir, onExtractFileListener);
+                extractCommonDlls(wineInfo, "i386-windows", "syswow64", commonDlls, containerDir, onExtractFileListener, true);
             }
             catch (JSONException e) {
                 return false;

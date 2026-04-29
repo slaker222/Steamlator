@@ -135,7 +135,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         final View vDXWrapperConfig = findViewById(R.id.BTDXWrapperConfig);
         vDXWrapperConfig.setTag(shortcut.getExtra("dxwrapperConfig", shortcut.container.getDXWrapperConfig()));
 
-        ContainerDetailFragment.setupDXWrapperSpinner(sDXWrapper, vDXWrapperConfig);
+        ContainerDetailFragment.setupDXWrapperSpinner(sDXWrapper, vDXWrapperConfig, null);
         ContainerDetailFragment.setupDDrawSpinner(sDDrawrapper, shortcut.getExtra("ddrawrapper", shortcut.container.getDDrawWrapper()));
         loadGraphicsDriverSpinner(sGraphicsDriver, sDXWrapper, vGraphicsDriverConfig, shortcut.getExtra("graphicsDriver", shortcut.container.getGraphicsDriver()),
             shortcut.getExtra("dxwrapper", shortcut.container.getDXWrapper()));

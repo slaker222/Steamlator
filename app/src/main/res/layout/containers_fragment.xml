@@ -11,12 +11,27 @@
         android:scrollbars="vertical"
         app:layoutManager="LinearLayoutManager" />
 
-    <TextView
-        android:id="@+id/TVEmptyText"
+    <LinearLayout
+        android:id="@+id/EmptyStateContainer"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:gravity="center"
-        android:text="@string/no_items_to_display"
-        android:textSize="24sp"
-        android:visibility="gone" />
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/TVEmptyText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:text="@string/no_items_to_display"
+            android:textSize="24sp" />
+
+        <Button
+            android:id="@+id/BTCreateNewContainer"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/create_new_container" />
+    </LinearLayout>
 </FrameLayout>

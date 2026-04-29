@@ -22,6 +22,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -44,6 +45,7 @@ import com.winlator.cmod.contentdialog.StorageInfoDialog;
 import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.PreloaderDialog;
+import com.winlator.cmod.widget.NeonIconBorderView;
 import com.winlator.cmod.xenvironment.ImageFs;
 
 import java.io.File;
@@ -57,7 +59,8 @@ import java.util.List;
 public class ContainersFragment extends Fragment {
     private static final int REQUEST_CODE_IMPORT_CONTAINER = 1070;
     private RecyclerView recyclerView;
-    private TextView emptyTextView;
+    private View emptyStateContainer;
+    private Button createNewContainerButton;
     private ContainerManager manager;
     private PreloaderDialog preloaderDialog;
 
@@ -81,7 +84,9 @@ public class ContainersFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         FrameLayout frameLayout = (FrameLayout) inflater.inflate(R.layout.containers_fragment, container, false);
         recyclerView = frameLayout.findViewById(R.id.RecyclerView);
-        emptyTextView = frameLayout.findViewById(R.id.TVEmptyText);
+        emptyStateContainer = frameLayout.findViewById(R.id.EmptyStateContainer);
+        createNewContainerButton = frameLayout.findViewById(R.id.BTCreateNewContainer);
+        createNewContainerButton.setOnClickListener(v -> openCreateContainerScreen());
         recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
         recyclerView.addItemDecoration(new DividerItemDecoration(recyclerView.getContext(), DividerItemDecoration.VERTICAL));
         return frameLayout;
@@ -90,7 +95,11 @@ public class ContainersFragment extends Fragment {
     private void loadContainersList() {
         ArrayList<Container> containers = manager.getContainers();
         recyclerView.setAdapter(new ContainersAdapter(containers));
-        if (containers.isEmpty()) emptyTextView.setVisibility(View.VISIBLE);
+        if (containers.isEmpty()) {
+            emptyStateContainer.setVisibility(View.VISIBLE);
+        } else {
+            emptyStateContainer.setVisibility(View.GONE);
+        }
     }
 
     @Override
@@ -110,13 +119,7 @@ public class ContainersFragment extends Fragment {
     public boolean onOptionsItemSelected(MenuItem menuItem) {
         switch (menuItem.getItemId()) {
             case R.id.containers_menu_add:
-                if (!ImageFs.find(getContext()).isValid()) return false;
-                FragmentManager fragmentManager = getParentFragmentManager();
-                fragmentManager.beginTransaction()
-                        .setCustomAnimations(R.anim.slide_in_up, R.anim.slide_out_down, R.anim.slide_in_down, R.anim.slide_out_up)
-                        .addToBackStack(null)
-                        .replace(R.id.FLFragmentContainer, new ContainerDetailFragment())
-                        .commit();
+                openCreateContainerScreen();
                 return true;
 
             case R.id.containers_menu_import:
@@ -139,6 +142,16 @@ public class ContainersFragment extends Fragment {
     private void openTerminal() {
         Intent intent = new Intent(getContext(), TerminalActivity.class);
         startActivity(intent);
+    }
+
+    private void openCreateContainerScreen() {
+        if (!ImageFs.find(getContext()).isValid()) return;
+        FragmentManager fragmentManager = getParentFragmentManager();
+        fragmentManager.beginTransaction()
+                .setCustomAnimations(R.anim.slide_in_up, R.anim.slide_out_down, R.anim.slide_in_down, R.anim.slide_out_up)
+                .addToBackStack(null)
+                .replace(R.id.FLFragmentContainer, new ContainerDetailFragment())
+                .commit();
     }
 
 
@@ -270,13 +283,17 @@ public class ContainersFragment extends Fragment {
 
         private class ViewHolder extends RecyclerView.ViewHolder {
             private final ImageView runButton; // Changed to ImageButton
+            private final ImageView editButton;
             private final ImageView menuButton; // Changed to ImageButton
             private final ImageView imageView;
+            private final NeonIconBorderView neonBorderView;
             private final TextView title;
 
             private ViewHolder(View view) {
                 super(view);
                 this.runButton = view.findViewById(R.id.BTRun); // Find by correct ID
+                this.editButton = view.findViewById(R.id.BTEdit);
+                this.neonBorderView = view.findViewById(R.id.VNeonBorder);
                 this.imageView = view.findViewById(R.id.ImageView);
                 this.title = view.findViewById(R.id.TVTitle);
                 this.menuButton = view.findViewById(R.id.BTMenu);
@@ -295,6 +312,7 @@ public class ContainersFragment extends Fragment {
         @Override
         public void onViewRecycled(@NonNull ViewHolder holder) {
             holder.runButton.setOnClickListener(null); // Remove listeners
+            holder.editButton.setOnClickListener(null);
             holder.menuButton.setOnClickListener(null); // Remove listeners
             super.onViewRecycled(holder);
         }
@@ -303,9 +321,11 @@ public class ContainersFragment extends Fragment {
         public void onBindViewHolder(final ViewHolder holder, int position) {
             final Container item = data.get(position); // Use 'item' instead of undefined 'container'
             holder.imageView.setImageResource(R.drawable.icon_container);
+            holder.neonBorderView.setIconResource(R.drawable.icon_container);
             holder.title.setText(item.getName());
 
             holder.runButton.setOnClickListener(view -> runContainer(item)); // Correct item reference
+            holder.editButton.setOnClickListener(view -> editContainer(item));
 
             holder.menuButton.setOnClickListener(view -> showListItemMenu(view, item));
         }
@@ -326,6 +346,15 @@ public class ContainersFragment extends Fragment {
             }
         }
 
+        private void editContainer(Container container) {
+            FragmentManager fragmentManager = getParentFragmentManager();
+            fragmentManager.beginTransaction()
+                    .setCustomAnimations(R.anim.slide_in_up, R.anim.slide_out_down, R.anim.slide_in_down, R.anim.slide_out_up)
+                    .addToBackStack(null)
+                    .replace(R.id.FLFragmentContainer, new ContainerDetailFragment(container.id))
+                    .commit();
+        }
+
         private void showListItemMenu(View anchorView, Container container) {
             final Context context = getContext();
             PopupMenu listItemMenu = new PopupMenu(context, anchorView);
@@ -334,14 +363,6 @@ public class ContainersFragment extends Fragment {
 
             listItemMenu.setOnMenuItemClickListener((menuItem) -> {
                 switch (menuItem.getItemId()) {
-                    case R.id.container_edit:
-                        FragmentManager fragmentManager = getParentFragmentManager();
-                        fragmentManager.beginTransaction()
-                                .setCustomAnimations(R.anim.slide_in_up, R.anim.slide_out_down, R.anim.slide_in_down, R.anim.slide_out_up)
-                                .addToBackStack(null)
-                                .replace(R.id.FLFragmentContainer, new ContainerDetailFragment(container.id))
-                                .commit();
-                        break;
                     case R.id.container_duplicate:
                         ContentDialog.confirm(getContext(), R.string.do_you_want_to_duplicate_this_container, () -> {
                             preloaderDialog.show(R.string.duplicating_container);
