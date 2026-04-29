@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Outer glass layer -->
+    <item>
+        <shape>
+            <gradient
+                android:startColor="#26ffffff"
+                android:endColor="#0effffff"
+                android:angle="135" />
+            <stroke android:width="1.2dp" android:color="#60ffffff" />
+            <corners android:radius="24dp" />
+        </shape>
+    </item>
+    <!-- Inner glow for depth -->
+    <item android:left="2dp" android:top="2dp" android:right="2dp" android:bottom="2dp">
+        <shape>
+            <gradient
+                android:type="radial"
+                android:gradientRadius="200dp"
+                android:startColor="#1099ddff"
+                android:endColor="#0099ddff" />
+            <corners android:radius="22dp" />
+        </shape>
+    </item>
+    <!-- Bottom highlight -->
+    <item android:top="72dp" android:left="20dp" android:right="20dp" android:height="24dp">
+        <shape>
+            <gradient
+                android:startColor="#30ffffff"
+                android:endColor="#00ffffff"
+                android:angle="90" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+</layer-list>

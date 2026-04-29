@@ -7,29 +7,68 @@
     android:focusable="false">
 
     <LinearLayout
-        android:layout_width="wrap_content"
+        android:id="@+id/PreloaderContainer"
+        android:layout_width="320dp"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:paddingTop="22dp"
         android:paddingBottom="22dp"
         android:paddingLeft="32dp"
         android:paddingRight="32dp"
-        android:gravity="center_vertical"
+        android:gravity="center_horizontal"
         android:layout_gravity="center"
         android:background="@drawable/preloader_background">
 
-        <ProgressBar
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:indeterminate="true"
-            android:layout_marginRight="16dp"
-            android:indeterminateDrawable="@drawable/progress_bar_indeterminate" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ProgressBar
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:indeterminate="true"
+                android:layout_marginRight="16dp"
+                android:indeterminateDrawable="@drawable/progress_bar_indeterminate" />
+
+            <TextView
+                android:id="@+id/TextView"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:maxLines="2"
+                android:ellipsize="end"
+                android:textSize="20dp"
+                android:textColor="@color/colorPrimaryDark" />
+        </LinearLayout>
 
         <TextView
-            android:id="@+id/TextView"
-            android:layout_width="wrap_content"
+            android:id="@+id/TVDetailsTitle"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="20dp"
-            android:textColor="@color/colorPrimaryDark" />
+            android:layout_marginTop="10dp"
+            android:text="@string/startup_actions"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="@color/colorPrimaryDark"
+            android:visibility="gone" />
+
+        <ScrollView
+            android:id="@+id/SVDetails"
+            android:layout_width="match_parent"
+            android:layout_height="150dp"
+            android:layout_marginTop="6dp"
+            android:fillViewport="true"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/TVDetails"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textSize="11sp"
+                android:lineSpacingExtra="2dp"
+                android:textColor="@color/colorPrimaryDark" />
+        </ScrollView>
     </LinearLayout>
 </FrameLayout>

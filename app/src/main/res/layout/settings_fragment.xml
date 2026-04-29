@@ -109,6 +109,25 @@
                     android:text="@string/sound" />
             </FrameLayout>
 
+            <!-- Language Settings -->
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <LinearLayout style="@style/FieldSet">
+                    <Spinner
+                        android:id="@+id/SLanguage"
+                        style="@style/ComboBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:entries="@array/language_entries"
+                        android:spinnerMode="dialog" />
+                </LinearLayout>
+                <TextView
+                    android:id="@+id/TVLanguage"
+                    style="@style/FieldSetLabel"
+                    android:text="@string/language" />
+            </FrameLayout>
+
             <!-- Theme Settings -->
             <FrameLayout
                 android:layout_width="match_parent"
@@ -230,74 +249,124 @@
 
                 <LinearLayout style="@style/FieldSet">
                     <LinearLayout
+                        android:id="@+id/LLInputControlTabs"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginTop="8dp">
+                        android:orientation="horizontal">
 
-                        <TextView
+                        <Button
+                            android:id="@+id/BTSensorTab"
+                            style="@style/ButtonNeutral"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="@string/cursor_speed"/>
+                            android:text="Sensor" />
 
-                        <TextView
-                            android:id="@+id/TVCursorSpeed"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content" />
+                        <Button
+                            android:id="@+id/BTGamepadTab"
+                            style="@style/ButtonNeutral"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:layout_weight="1"
+                            android:text="Gamepad" />
                     </LinearLayout>
 
-                    <SeekBar
-                        android:id="@+id/SBCursorSpeed"
+                    <LinearLayout
+                        android:id="@+id/LLSensorContent"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:min="10"
-                        android:max="200" />
+                        android:orientation="vertical">
 
-                    <CheckBox
-                        android:id="@+id/CBUseDRI3"
-                        android:layout_width="wrap_content"
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="@string/cursor_speed" />
+
+                            <TextView
+                                android:id="@+id/TVCursorSpeed"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content" />
+                        </LinearLayout>
+
+                        <SeekBar
+                            android:id="@+id/SBCursorSpeed"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:max="200"
+                            android:min="10" />
+
+                        <CheckBox
+                            android:id="@+id/CBUseDRI3"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/use_dri3_extension" />
+
+                        <CheckBox
+                            android:id="@+id/CBUseXR"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/use_xr" />
+
+                        <CheckBox
+                            android:id="@+id/CBCursorLock"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="True Mouse Control (Deactivate with Volume Down)" />
+
+                        <CheckBox
+                            android:id="@+id/CBForceMouseControl"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="Force Mouse Control" />
+
+                        <CheckBox
+                            android:id="@+id/CBXinputToggle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="Disable Xinput (Used for Exclusive M/KB support)" />
+
+                        <CheckBox
+                            android:id="@+id/CBXTouchscreenToggle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="Touchscreen Mode" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/LLGamepadContent"
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/use_dri3_extension"
-                        android:layout_marginTop="8dp" />
+                        android:layout_marginTop="10dp"
+                        android:orientation="vertical"
+                        android:visibility="gone">
 
-                    <CheckBox
-                        android:id="@+id/CBUseXR"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/use_xr"
-                        android:layout_marginTop="8dp" />
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:text="Move sticks and press gamepad buttons to see live input." />
 
-                    <!-- New Cursor Lock Checkbox -->
-                    <CheckBox
-                        android:id="@+id/CBCursorLock"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="True Mouse Control (Deactivate with Volume Down)"
-                        android:layout_marginTop="8dp" />
-
-                    <CheckBox
-                        android:id="@+id/CBForceMouseControl"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Force Mouse Control"
-                        android:layout_marginTop="8dp" />
-
-                    <!-- New Xinput Toggle Checkbox -->
-                    <CheckBox
-                        android:id="@+id/CBXinputToggle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Disable Xinput (Used for Exclusive M/KB support)"
-                        android:layout_marginTop="8dp" />
-
-                    <CheckBox
-                        android:id="@+id/CBXTouchscreenToggle"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Touchscreen Mode"
-                        android:layout_marginTop="8dp" />
-
+                        <com.winlator.cmod.widget.GamepadVisualizerView
+                            android:id="@+id/GamepadVisualizer"
+                            android:layout_width="match_parent"
+                            android:layout_height="260dp"
+                            android:focusable="true"
+                            android:focusableInTouchMode="true" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <TextView

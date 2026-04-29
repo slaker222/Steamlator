@@ -18,9 +18,28 @@
 
     <View style="@style/HorizontalLine" />
 
+    <TextView
+        android:id="@+id/TVRemoteDriversTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Available Online Drivers"
+        android:textStyle="bold" />
+
+    <androidx.recyclerview.widget.RecyclerView xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:id="@+id/RVRemoteDrivers"
+        android:layout_width="match_parent"
+        android:layout_height="180dp"
+        android:layout_marginTop="8dp"
+        android:scrollbars="vertical"
+        app:layoutManager="LinearLayoutManager" />
+
+    <View style="@style/HorizontalLine" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
         android:orientation="horizontal">
 
         <Button

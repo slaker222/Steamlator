@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base dark gradient background -->
+    <item>
+        <shape>
+            <gradient
+                android:startColor="#0d1b3d"
+                android:endColor="#0f2847"
+                android:angle="135" />
+        </shape>
+    </item>
+    <!-- Overlay blur simulation with radial gradients -->
+    <item android:top="-100dp" android:end="-100dp">
+        <shape>
+            <gradient
+                android:type="radial"
+                android:gradientRadius="280dp"
+                android:startColor="#4a7fd9aa"
+                android:centerColor="#2d5fa655"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+    <item android:bottom="-80dp" android:start="-80dp">
+        <shape>
+            <gradient
+                android:type="radial"
+                android:gradientRadius="240dp"
+                android:startColor="#3d66ff99"
+                android:centerColor="#1d6699aa"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+</layer-list>

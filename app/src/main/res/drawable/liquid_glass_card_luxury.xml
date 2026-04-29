@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base background -->
+    <item>
+        <shape>
+            <solid android:color="#0a1425" />
+        </shape>
+    </item>
+    <!-- Frosted glass overlay -->
+    <item android:left="0dp" android:top="0dp" android:right="0dp" android:bottom="0dp">
+        <shape>
+            <gradient
+                android:startColor="#22ffffff"
+                android:endColor="#08ffffff"
+                android:angle="135" />
+            <stroke android:width="0.5dp" android:color="#40ffffff" />
+        </shape>
+    </item>
+    <!-- Subtle light accent -->
+    <item android:top="0dp" android:left="0dp" android:right="60dp" android:bottom="75dp">
+        <shape>
+            <gradient
+                android:type="radial"
+                android:gradientRadius="100dp"
+                android:startColor="#1899ddff"
+                android:endColor="#0099ddff" />
+        </shape>
+    </item>
+    <!-- Subtle glow accent bottom-right -->
+    <item android:top="75dp" android:left="60dp" android:right="0dp" android:bottom="0dp">
+        <shape>
+            <gradient
+                android:type="radial"
+                android:gradientRadius="80dp"
+                android:startColor="#1166ff99"
+                android:endColor="#0066ff99" />
+        </shape>
+    </item>
+</layer-list>

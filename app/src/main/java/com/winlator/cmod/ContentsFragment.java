@@ -63,7 +63,7 @@ public class ContentsFragment extends Fragment {
 
         // Initialize isDarkMode based on shared preferences or theme
         isDarkMode = PreferenceManager.getDefaultSharedPreferences(getContext())
-                .getBoolean("dark_mode", false);
+                .getBoolean("dark_mode", true);
     }
 
     @Override
@@ -76,11 +76,14 @@ public class ContentsFragment extends Fragment {
     public void onResume() {
         super.onResume();
 
+        Activity activity = getActivity();
+        if (activity == null) return;
+
         new Thread(() -> {
-            String json = FileUtils.readString(getActivity(), ContentsManager.REMOTE_PROFILES);
+            String json = FileUtils.readString(activity, ContentsManager.REMOTE_PROFILES);
             if (json == null)
                 return;
-            getActivity().runOnUiThread(() -> {
+            activity.runOnUiThread(() -> {
                 manager.setRemoteProfiles(json);
                 loadContentList();
             });
@@ -98,6 +101,11 @@ public class ContentsFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         ViewGroup layout = (ViewGroup) inflater.inflate(R.layout.contents_fragment, container, false);
 
+        emptyText = layout.findViewById(R.id.TVEmptyText);
+        recyclerView = layout.findViewById(R.id.RecyclerView);
+        recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
+        recyclerView.addItemDecoration(new DividerItemDecoration(recyclerView.getContext(), DividerItemDecoration.VERTICAL));
+
         sContentType = layout.findViewById(R.id.SContentType);
         updateContentTypeSpinner(sContentType);
         sContentType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -113,8 +121,6 @@ public class ContentsFragment extends Fragment {
             }
         });
 
-        emptyText = layout.findViewById(R.id.TVEmptyText);
-
         View btInstallContent = layout.findViewById(R.id.BTInstallContent);
         btInstallContent.setOnClickListener(v -> {
             ContentDialog.confirm(getContext(), getString(R.string.do_you_want_to_install_content) + " " + getString(R.string.pls_make_sure_content_trustworthy) + " "
@@ -126,9 +132,6 @@ public class ContentsFragment extends Fragment {
             });
         });
 
-        recyclerView = layout.findViewById(R.id.RecyclerView);
-        recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
-        recyclerView.addItemDecoration(new DividerItemDecoration(recyclerView.getContext(), DividerItemDecoration.VERTICAL));
         loadContentList();
 
         return layout;
@@ -159,6 +162,7 @@ public class ContentsFragment extends Fragment {
 
     private void updateContentsListView() {
         List<ContentProfile> profiles = manager.getProfiles(currentContentType);
+        if (profiles == null || recyclerView == null || emptyText == null) return;
         if (profiles.isEmpty()) {
             recyclerView.setVisibility(View.GONE);
             emptyText.setVisibility(View.VISIBLE);

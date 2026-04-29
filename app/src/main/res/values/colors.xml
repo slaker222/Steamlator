@@ -7,18 +7,32 @@
     <color name="colorAccent">#0288d1</color>
     <color name="black">#000000</color>
 
-    <!-- Dark Theme Colors -->
-    <color name="window_background_color_dark">#121212</color>
-    <color name="colorPrimaryDarkMode">#37474f</color>
-    <color name="colorPrimaryDarkModeDark">#263238</color>
-    <color name="colorAccentDark">#80d8ff</color>
+    <!-- Dark Theme Colors (Steam-style) -->
+    <color name="window_background_color_dark">#111a24</color>
+    <color name="colorPrimaryDarkMode">#1d364f</color>
+    <color name="colorPrimaryDarkModeDark">#0c1721</color>
+    <color name="colorAccentDark">#66c0f4</color>
     <color name="white">#ffffff</color>
+    <color name="steam_surface">#111a24</color>
+    <color name="steam_card">#16212d</color>
+    <color name="steam_card_border">#2b5f96</color>
+    <color name="steam_text_secondary">#8f98a0</color>
+    <color name="steam_button_focus">#2b5f96</color>
+    <color name="glass_text_secondary">#a2b1c4</color>
+    <color name="glass_surface_start">#08111a</color>
+    <color name="glass_surface_end">#111a28</color>
+    <color name="glass_panel_fill">#22ffffff</color>
+    <color name="glass_glow_blue">#6699ddff</color>
+    <color name="glass_glow_pink">#66ff99dd</color>
+    <color name="glass_border_light">#70ffffff</color>
+    <color name="glass_accent_cyan">#3d66ff99</color>
+    <color name="glass_accent_blue">#4a7fd9aa</color>
 
-    <!-- Additional Colors for Dark Mode -->
-    <color name="combo_box_dark">#303030</color>
-    <color name="content_dialog_background_dark">#424242</color>
-    <color name="button_neutral_dark">#37474f</color>
-    <color name="button_positive_dark">#1e88e5</color>
+    <!-- Additional Colors for Dark Mode (Steam-style) -->
+    <color name="combo_box_dark">#2a475e</color>
+    <color name="content_dialog_background_dark">#171a21</color>
+    <color name="button_neutral_dark">#2a475e</color>
+    <color name="button_positive_dark">#66c0f4</color>
 
     <color name="abc_decor_view_status_guard">#ff000000</color>
     <color name="abc_decor_view_status_guard_light">#ffffffff</color>

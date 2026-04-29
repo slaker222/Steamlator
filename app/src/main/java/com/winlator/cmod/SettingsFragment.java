@@ -15,8 +15,10 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
@@ -35,6 +37,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.collection.ArrayMap;
+import android.content.res.Configuration;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
@@ -65,6 +68,7 @@ import com.winlator.cmod.inputcontrols.PreferenceKeys;
 import com.winlator.cmod.midi.MidiManager;
 import com.winlator.cmod.restore.RestoreActivity;
 import com.winlator.cmod.widget.InputControlsView;
+import com.winlator.cmod.widget.GamepadVisualizerView;
 import com.winlator.cmod.xenvironment.ImageFs;
 import com.winlator.cmod.xenvironment.ImageFsInstaller;
 
@@ -114,6 +118,9 @@ public class SettingsFragment extends Fragment {
     private CheckBox cbDarkMode;
     boolean isDarkMode;
 
+    private Spinner sLanguage;
+    private static final String PREF_LANGUAGE = "app_language";
+
     private static final int REQUEST_CODE_FRONTEND_EXPORT_PATH = 1002;
     private static final int REQUEST_CODE_INSTALL_SOUNDFONT = 1001;
 
@@ -145,15 +152,49 @@ public class SettingsFragment extends Fragment {
         View view = inflater.inflate(R.layout.settings_fragment, container, false);
         final Context context = getContext();
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        if (!preferences.contains("dark_mode")) {
+            preferences.edit().putBoolean("dark_mode", true).apply();
+        }
 
         // Check for Dark Mode preference
-        isDarkMode = preferences.getBoolean("dark_mode", false);
+        isDarkMode = preferences.getBoolean("dark_mode", true);
         // Apply dynamic styles
         applyDynamicStyles(view, isDarkMode);
 
+        // Initialize Language Spinner
+        sLanguage = view.findViewById(R.id.SLanguage);
+        final String[] langValues = getResources().getStringArray(R.array.language_values);
+        String savedLang = preferences.getString(PREF_LANGUAGE, "en");
+        int langIndex = 0;
+        for (int i = 0; i < langValues.length; i++) {
+            if (langValues[i].equals(savedLang)) { langIndex = i; break; }
+        }
+        sLanguage.setSelection(langIndex);
+
+        // Apply language immediately on selection (skip first automated call from setSelection)
+        final boolean[] langSpinnerReady = {false};
+        sLanguage.post(() -> {
+            sLanguage.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                @Override
+                public void onItemSelected(android.widget.AdapterView<?> parent, View v, int position, long id) {
+                    if (!langSpinnerReady[0]) { langSpinnerReady[0] = true; return; }
+                    String selectedLang = langValues[position];
+                    preferences.edit().putString(PREF_LANGUAGE, selectedLang).apply();
+                    java.util.Locale newLocale = new java.util.Locale(selectedLang);
+                    java.util.Locale.setDefault(newLocale);
+                    Configuration config = new Configuration(getResources().getConfiguration());
+                    config.setLocale(newLocale);
+                    getActivity().getResources().updateConfiguration(config, getActivity().getResources().getDisplayMetrics());
+                    getActivity().recreate();
+                }
+                @Override
+                public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+            });
+        });
+
         // Initialize the Dark Mode checkbox
         cbDarkMode = view.findViewById(R.id.CBDarkMode);
-        cbDarkMode.setChecked(preferences.getBoolean("dark_mode", false));
+        cbDarkMode.setChecked(preferences.getBoolean("dark_mode", true));
 
         cbDarkMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
             // Save dark mode preference
@@ -370,6 +411,8 @@ public class SettingsFragment extends Fragment {
         });
         sbCursorSpeed.setProgress((int)(preferences.getFloat("cursor_speed", 1.0f) * 100));
 
+        setupInputControlTabs(view);
+
         final RadioGroup rgTriggerType = view.findViewById(R.id.RGTriggerType);
         final View btHelpTriggerMode = view.findViewById(R.id.BTHelpTriggerMode);
         List<Integer> triggerRbIds = List.of(R.id.RBTriggerIsButton, R.id.RBTriggerIsAxis, R.id.RBTriggerIsMixed);
@@ -457,25 +500,72 @@ public class SettingsFragment extends Fragment {
             editor.putBoolean("enable_big_picture_mode", ((CheckBox) view.findViewById(R.id.CBEnableBigPictureMode)).isChecked());
             saveCustomApiKeySettings(editor);
 
-            if (editor.commit()) {
-                // Now perform the extraction based on the saved state
+            // Save and apply selected language
+            String[] langVals = getResources().getStringArray(R.array.language_values);
+            String selectedLang = langVals[sLanguage.getSelectedItemPosition()];
+            editor.putString(PREF_LANGUAGE, selectedLang);
 
+            if (editor.commit()) {
+                // Apply locale change using traditional Locale+Configuration approach
+                java.util.Locale newLocale = new java.util.Locale(selectedLang);
+                java.util.Locale.setDefault(newLocale);
+                Configuration config = new Configuration(getResources().getConfiguration());
+                config.setLocale(newLocale);
+                getActivity().getResources().updateConfiguration(config, getActivity().getResources().getDisplayMetrics());
+
+                // Now perform the extraction based on the saved state
                 extractLegacyInputFiles(enableLegacyInputMode);
 
-
-
-                NavigationView navigationView = getActivity().findViewById(R.id.NavigationView);
-                navigationView.setCheckedItem(R.id.main_menu_containers);
-                FragmentManager fragmentManager = getParentFragmentManager();
-                fragmentManager.beginTransaction()
-                        .replace(R.id.FLFragmentContainer, new ContainersFragment())
-                        .commit();
+                // Recreate activity so all strings reload in new locale
+                getActivity().recreate();
             }
         });
 
 
 
         return view;
+    }
+
+    private void setupInputControlTabs(View view) {
+        View sensorTab = view.findViewById(R.id.BTSensorTab);
+        View gamepadTab = view.findViewById(R.id.BTGamepadTab);
+        View sensorContent = view.findViewById(R.id.LLSensorContent);
+        View gamepadContent = view.findViewById(R.id.LLGamepadContent);
+        GamepadVisualizerView gamepadVisualizer = view.findViewById(R.id.GamepadVisualizer);
+
+        Runnable showSensor = () -> {
+            sensorContent.setVisibility(View.VISIBLE);
+            gamepadContent.setVisibility(View.GONE);
+            sensorTab.setAlpha(1.0f);
+            gamepadTab.setAlpha(0.65f);
+        };
+
+        Runnable showGamepad = () -> {
+            sensorContent.setVisibility(View.GONE);
+            gamepadContent.setVisibility(View.VISIBLE);
+            sensorTab.setAlpha(0.65f);
+            gamepadTab.setAlpha(1.0f);
+            gamepadVisualizer.requestFocus();
+        };
+
+        sensorTab.setOnClickListener(v -> showSensor.run());
+        gamepadTab.setOnClickListener(v -> showGamepad.run());
+
+        // Sensor tab is default, preserving existing behavior.
+        showSensor.run();
+
+        view.setFocusableInTouchMode(true);
+        view.requestFocus();
+
+        view.setOnGenericMotionListener((v, event) -> {
+            if ((event.getSource() & InputDevice.SOURCE_JOYSTICK) != InputDevice.SOURCE_JOYSTICK
+                    || event.getAction() != MotionEvent.ACTION_MOVE) {
+                return false;
+            }
+            return gamepadVisualizer.handleMotionEvent(event);
+        });
+
+        view.setOnKeyListener((v, keyCode, event) -> gamepadVisualizer.handleKeyEvent(event));
     }
 
     private void updateTheme(boolean isDarkMode) {
@@ -538,6 +628,9 @@ public class SettingsFragment extends Fragment {
 
         TextView ImageFsLabel = view.findViewById(R.id.TVImageFs);
         applyFieldSetLabelStyle(ImageFsLabel, isDarkMode);
+
+        TextView languageLabel = view.findViewById(R.id.TVLanguage);
+        applyFieldSetLabelStyle(languageLabel, isDarkMode);
 
     }
 

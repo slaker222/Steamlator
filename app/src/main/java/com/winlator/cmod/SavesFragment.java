@@ -72,7 +72,7 @@ public class SavesFragment extends Fragment {
 
         // Initialize isDarkMode based on shared preferences or theme
         isDarkMode = PreferenceManager.getDefaultSharedPreferences(getContext())
-                .getBoolean("dark_mode", false);
+                .getBoolean("dark_mode", true);
     }
 
     @Override
@@ -459,7 +459,7 @@ public class SavesFragment extends Fragment {
         private void shareExportedFile(File exportFile) {
             Intent shareIntent = new Intent(Intent.ACTION_SEND);
             shareIntent.setType("application/octet-stream"); // More general MIME type
-            Uri fileUri = FileProvider.getUriForFile(getContext(), "com.winlator.fileprovider", exportFile);
+            Uri fileUri = FileProvider.getUriForFile(getContext(), "com.winlator.steam.tileprovider", exportFile);
             shareIntent.putExtra(Intent.EXTRA_STREAM, fileUri);
             shareIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
