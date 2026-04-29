@@ -2,10 +2,12 @@ package com.winlator.cmod;
 
 import android.Manifest;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -47,6 +49,7 @@ import com.winlator.cmod.saves.SaveManager;
 import com.winlator.cmod.xenvironment.ImageFsInstaller;
 
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     public static final @IntRange(from = 1, to = 19) byte CONTAINER_PATTERN_COMPRESSION_LEVEL = 9;
@@ -114,6 +117,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
 
     @Override
+    protected void attachBaseContext(Context base) {
+        // Restore saved language preference before views are inflated
+        SharedPreferences prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(base);
+        String lang = prefs.getString("app_language", "en");
+        Locale locale = new Locale(lang);
+        Locale.setDefault(locale);
+        Configuration config = new Configuration(base.getResources().getConfiguration());
+        config.setLocale(locale);
+        super.attachBaseContext(base.createConfigurationContext(config));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
@@ -134,7 +149,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         // Load the user's preferred theme
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        isDarkMode = sharedPreferences.getBoolean("dark_mode", false);
+        isDarkMode = sharedPreferences.getBoolean("dark_mode", true);
 
         // Apply the theme based on the preference
         if (isDarkMode) {
@@ -374,7 +389,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 show(new SavesFragment(), false);  // Forward animation
                 break;
             case R.id.main_menu_settings:
-                show(new SettingsFragment(), false);  // Forward animation
+                show(new SettingsFragment(), false);
+                break;
+            case R.id.main_menu_device:
+                show(new DeviceFragment(), false);
                 break;
             case R.id.main_menu_about:
                 showAboutDialog();
@@ -424,13 +442,19 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             final PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
 
             TextView tvWebpage = dialog.findViewById(R.id.TVWebpage);
-            tvWebpage.setText(Html.fromHtml("<a href=\"https://www.winlator.org\">winlator.org</a>", Html.FROM_HTML_MODE_LEGACY));
+            tvWebpage.setText(Html.fromHtml(" ", Html.FROM_HTML_MODE_LEGACY));
             tvWebpage.setMovementMethod(LinkMovementMethod.getInstance());
 
             ((TextView) dialog.findViewById(R.id.TVAppVersion)).setText(getString(R.string.version) + " " + pInfo.versionName);
 
+            TextView tvSteamlatorCredit = dialog.findViewById(R.id.TVSteamlatorCredit);
+            tvSteamlatorCredit.setText(Html.fromHtml("Steamlator by slaker222 (<a href=\"https://github.com/slaker222/Steamlator\">link</a>)", Html.FROM_HTML_MODE_LEGACY));
+            tvSteamlatorCredit.setMovementMethod(LinkMovementMethod.getInstance());
+
             String creditsAndThirdPartyAppsHTML = String.join("<br />",
+                    "original winlator by brunodev85 (<a href=\"https://github.com/brunodev85/winlator\">link</a>)",
                     "Winlator Cmod by coffincolors (<a href=\"https://github.com/coffincolors/winlator\">Fork</a>)",
+                    "Winlator Glibc by longjunyu2s (<a href=\"https://github.com/longjunyu2/winlator/tree/use-glibc-instead-of-proot\">Fork</a>)",
                     "Big Picture Mode Music by",
                     "Dale Melvin Blevens III (Fumer)",
                     "---",
@@ -448,12 +472,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             TextView tvCreditsAndThirdPartyApps = dialog.findViewById(R.id.TVCreditsAndThirdPartyApps);
             tvCreditsAndThirdPartyApps.setText(Html.fromHtml(creditsAndThirdPartyAppsHTML, Html.FROM_HTML_MODE_LEGACY));
             tvCreditsAndThirdPartyApps.setMovementMethod(LinkMovementMethod.getInstance());
-
-            String glibcExpVersionForkHTML = String.join("<br />",
-                    "longjunyu2's <a href=\"https://github.com/longjunyu2/winlator/tree/use-glibc-instead-of-proot\">(Fork)</a>");
-            TextView tvGlibcExpVersionFork = dialog.findViewById(R.id.TVGlibcExpVersionFork);
-            tvGlibcExpVersionFork.setText(Html.fromHtml(glibcExpVersionForkHTML, Html.FROM_HTML_MODE_LEGACY));
-            tvGlibcExpVersionFork.setMovementMethod(LinkMovementMethod.getInstance());
         } catch (PackageManager.NameNotFoundException e) {
             e.printStackTrace();
         }

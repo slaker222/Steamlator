@@ -26,13 +26,13 @@ android {
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.winlator.cmod"
+        applicationId "com.winlator.steam"
         minSdkVersion 26
         // We’re preserving Winlator’s request to keep targetSdkVersion at 28
         targetSdkVersion 28
 
         versionCode 20
-        versionName "7.1.4x-cmod"
+        versionName "steamlator 1.7"
 
         // External native build from Winlator
         externalNativeBuild {
@@ -63,7 +63,7 @@ android {
         // If you have a release build type, add it here
     }
 
-    ndkVersion '27.0.12077973'  // from your original config
+    ndkVersion '29.0.14206865'  // from your original config
 
     externalNativeBuild {
         cmake {

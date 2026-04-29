@@ -35,7 +35,7 @@ public class Container {
     public static final String DEFAULT_DDRAWRAPPER = "wined3d";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,xaudio=0,vcrun2010=1,windowsmediafoundation=0,opengl=0";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,xaudio=1,vcrun2010=1,windowsmediafoundation=1,opengl=0";
-    public static final String DEFAULT_DRIVES = "D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"E:/data/data/com.winlator.cmod/storage";
+    public static final String DEFAULT_DRIVES = "D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"E:/data/data/com.winlator.steam/storage";
     public static final byte STARTUP_SELECTION_NORMAL = 0;
     public static final byte STARTUP_SELECTION_ESSENTIAL = 1;
     public static final byte STARTUP_SELECTION_AGGRESSIVE = 2;
@@ -53,6 +53,8 @@ public class Container {
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
+    private boolean debugOverlay;
+    private boolean quickHUD = true;
     private boolean fullscreenStretched;
     private boolean wow64Mode = true;
     private byte startupSelection = STARTUP_SELECTION_AGGRESSIVE;
@@ -238,6 +240,22 @@ public class Container {
 
     public boolean isShowFPS() {
         return showFPS;
+    }
+
+    public boolean isQuickHUD() {
+        return quickHUD;
+    }
+
+    public boolean isDebugOverlay() {
+        return debugOverlay;
+    }
+
+    public void setDebugOverlay(boolean debugOverlay) {
+        this.debugOverlay = debugOverlay;
+    }
+
+    public void setQuickHUD(boolean quickHUD) {
+        this.quickHUD = quickHUD;
     }
 
     public void setFullscreenStretched(boolean fullscreenStretched) { this.fullscreenStretched = fullscreenStretched; }
@@ -431,6 +449,8 @@ public class Container {
             data.put("blacklistedextensions", blacklistedExtensions);
             data.put("drives", drives);
             data.put("showFPS", showFPS);
+            data.put("debugOverlay", debugOverlay);
+            data.put("quickHUD", quickHUD);
             data.put("fullscreenStretched", fullscreenStretched);
             data.put("inputType", inputType);
             data.put("wow64Mode", wow64Mode);
@@ -508,6 +528,12 @@ public class Container {
                     break;
                 case "showFPS" :
                     setShowFPS(data.getBoolean(key));
+                    break;
+                case "debugOverlay" :
+                    setDebugOverlay(data.getBoolean(key));
+                    break;
+                case "quickHUD" :
+                    setQuickHUD(data.getBoolean(key));
                     break;
                 case "fullscreenStretched" :
                     setFullscreenStretched(data.getBoolean(key));

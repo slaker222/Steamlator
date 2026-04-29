@@ -4,7 +4,7 @@
     <!ENTITY TERMUX_X11_APP_NAME "Winlator:X11">
     ]>
 <resources>
-    <string name="app_name">Winlator</string>
+    <string name="app_name">Steamlator</string>
     <string name="run">Run</string>
     <string name="edit">Edit</string>
     <string name="remove">Remove</string>
@@ -13,14 +13,21 @@
     <string name="containers">Containers</string>
     <string name="input_controls">Input Controls</string>
     <string name="no_items_to_display">No items to display</string>
+    <string name="create_new_container">Create New Container</string>
     <string name="new_container">New Container</string>
     <string name="edit_container">Edit Container</string>
     <string name="creating_container">Creating Container…</string>
     <string name="removing_container">Removing Container…</string>
     <string name="duplicating_container">Duplicating Container…</string>
     <string name="installing_system_files">Installing System Files…</string>
+    <string name="install_mini_game_title">2048</string>
+    <string name="install_mini_game_subtitle">Swipe while files install</string>
     <string name="updating_system_files">Updating System Files…</string>
     <string name="starting_up">Starting up…</string>
+    <string name="startup_actions">Startup actions</string>
+    <string name="starting_winecfg">Starting winecfg…</string>
+    <string name="starting_regedit">Starting regedit…</string>
+    <string name="exit_from_container">Exit from container</string>
     <string name="unable_to_install_system_files">Unable to install system files</string>
     <string name="keyboard">Keyboard</string>
     <string name="toggle_fullscreen">Toggle Fullscreen</string>
@@ -53,6 +60,7 @@
     <string name="do_you_want_to_remove_this_controller">Do you want to remove this controller?</string>
     <string name="do_you_want_to_remove_this_wine_version">Do you want to remove this wine version?</string>
     <string name="do_you_want_to_remove_this_preset">Do you want to remove this preset?</string>
+    <string name="are_you_sure">Are you sure you want to remove this driver?</string>
     <string name="do_you_want_to_end_this_process">Do you want to end this process?</string>
     <string name="controls_editor">Controls Editor</string>
     <string name="enabled">Enabled</string>
@@ -77,9 +85,20 @@
     <string name="strict_shader_math">Strict Shader Math</string>
     <string name="video_memory_size">Video Memory Size</string>
     <string name="show_fps">Show FPS</string>
+    <string name="debug_overlay">Debug</string>
+    <string name="quick_hud">Quick HUD</string>
+    <string name="cpu">CPU</string>
+    <string name="temperature">Temperature</string>
+    <string name="limit_fps">Limit FPS</string>
+    <string name="unlimited">Unlimited</string>
+    <string name="restart_wineserver">Restart Wineserver</string>
+    <string name="frame_gen">Frame Gen</string>
     <string name="none">None</string>
     <string name="custom_text">Custom Text</string>
     <string name="icon">Icon</string>
+    <string name="import_image">Import Image</string>
+    <string name="use_original_style">Use Original</string>
+    <string name="use_white_style">Use White Style</string>
     <string name="import_profile">Import Profile</string>
     <string name="export_profile">Export Profile</string>
     <string name="touchpad_help">Touchpad Help</string>
@@ -114,6 +133,24 @@
     <string name="windowsmediafoundation">Windows Media Foundation</string>
     <string name="opengl">OpenGL</string>
     <string name="settings">Settings</string>
+    <string name="language">Language</string>
+    <string name="language_english">English</string>
+    <string name="language_spanish">Español</string>
+    <string name="language_russian">Русский</string>
+    <string name="language_ukrainian">Українська</string>
+    <string name="device">Device</string>
+    <string name="device_processor">Processor</string>
+    <string name="device_gpu">GPU</string>
+    <string name="device_gpu_vendor">GPU Vendor</string>
+    <string name="device_ram">RAM</string>
+    <string name="device_ram_total">Total RAM</string>
+    <string name="device_ram_available">Available RAM</string>
+    <string name="device_cpu_cores">Cores</string>
+    <string name="device_cores">cores</string>
+    <string name="device_vulkan">Vulkan</string>
+    <string name="device_opengl">OpenGL ES</string>
+    <string name="device_supported">Supported</string>
+    <string name="device_not_supported">Not supported</string>
     <string name="exec_arguments">Exec Arguments</string>
     <string name="win_components">Win Components</string>
     <string name="drives">Drives</string>
@@ -129,9 +166,16 @@
     <string name="unable_to_install_wine">Unable to install Wine</string>
     <string name="unable_to_remove_this_wine_version">Unable to remove this wine version</string>
     <string name="wine_version">Wine Version</string>
+    <string name="wine_version_target_info">Selected target: %1$s</string>
+    <string name="updating_wine_prefix">Updating Wine system files…</string>
+    <string name="wine_prefix_update_failed">Could not update Wine files for the selected version.</string>
+    <string name="wine_switch_arch_mismatch">Switching between ARM64EC and x86_64 Wine is not supported here. Create a new container for the other CPU type.</string>
     <string name="removing_wine">Removing Wine…</string>
     <string name="preparing_installation">Preparing installation…</string>
     <string name="finishing_installation">Finishing installation…</string>
+    <string name="unpacking_rootfs_step">Unpacking rootfs…</string>
+    <string name="extracting_file_step">Extracting: %1$s</string>
+    <string name="installing_wine_version_step">Installing Wine: %1$s</string>
     <string name="storage_info">Storage Info</string>
     <string name="drive_c">Drive C:</string>
     <string name="cache">Cache</string>
@@ -171,6 +215,7 @@
     <string name="copy">Copy</string>
     <string name="installed_version">Installed Version</string>
     <string name="unable_to_download_file">Unable to download file</string>
+    <string name="unable_to_find_file">Unable to open selected file</string>
     <string name="stability">Stability</string>
     <string name="compatibility">Compatibility</string>
     <string name="intermediate">Intermediate</string>
@@ -273,6 +318,8 @@
     <string name="as_button">Is Button</string>
     <string name="as_axis">Is Axis</string>
     <string name="both">Both</string>
+    <string name="trigger_mode">Trigger Mode</string>
+    <string name="use_glibc">Use native Glibc instead of Proot</string>
     <string name="trigger_type">Trigger Type</string>
     <string name="experimental">Experimental</string>
     <string name="glibc_exp_edition">Glibc Experimental Edition</string>
@@ -419,7 +466,10 @@
     <string name="help_file_provider"><![CDATA[
         <i><b>File Provider</b></i> allows access to Winlator\'s internal data through android file manager.<br/><br/>
     ]]></string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
     <string name="reconfigure">Reconfigure</string>
+    <string name="open_winecfg">Open winecfg</string>
+    <string name="open_regedit">Open regedit</string>
     <string name="do_you_want_to_reconfigure_wine">Do you want to reconfigure this container on the next startup? This will remove the timestamp to trigger Wine Configuration.</string>
 
     <!-- OpenXR specific text -->
@@ -616,4 +666,32 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="share_android_clipboard">Share Android Clipboard with Wine</string>
     <string name="ddraw_wrapper">DDraw/Glide Wrapper</string>
     <string name="fexcore_version">FEXCore Version</string>
+    <string name="controller_manager">Controller Manager</string>
+    <string name="player_1">Player 1</string>
+    <string name="player_2">Player 2</string>
+    <string name="player_3">Player 3</string>
+    <string name="player_4">Player 4</string>
+    <string name="not_assigned">Not Assigned</string>
+    <string name="assign">Assign</string>
+    <string name="vibrate">Vibration</string>
+    <string name="press_any_button_for_player">Press any button on the controller for</string>
+    <string name="restart_required_for_changes">Restart container for changes to take effect</string>
+    <string name="macros_hint">Toggle buttons to enable autofire.</string>
+    <string name="macros">Macros</string>
+    <string name="include_triggers_note">Also apply turbo to L2/R2 as digital presses</string>
+    <string name="enable_all">Enable all</string>
+    <string name="disable_all">Disable all</string>
+    <string name="on">On</string>
+    <string name="off">Off</string>
+    <string name="input_macros">Turbo / Macros</string>
+    <string name="button_lb">LB</string>
+    <string name="button_rb">RB</string>
+    <string name="button_back">Back</string>
+    <string name="button_start">Start</string>
+    <string name="button_l3">L3</string>
+    <string name="button_r3">R3</string>
+    <string name="dpad_up">D-Pad Up</string>
+    <string name="dpad_down">D-Pad Down</string>
+    <string name="dpad_left">D-Pad Left</string>
+    <string name="dpad_right">D-Pad Right</string>
 </resources>

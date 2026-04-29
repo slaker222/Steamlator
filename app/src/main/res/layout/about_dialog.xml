@@ -27,7 +27,7 @@
                     android:textSize="20sp"
                     android:textStyle="bold"
                     android:textColor="@color/colorPrimary"
-                    android:text="Winlator-glibc+cmod" />
+                    android:text="Stemlator 1.7" />
 
                 <TextView
                     android:id="@+id/TVWebpage"
@@ -53,6 +53,12 @@
         <View style="@style/HorizontalLine" />
 
         <TextView
+            android:id="@+id/TVSteamlatorCredit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorAccent" />
+
+        <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textStyle="bold"
@@ -63,15 +69,5 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textStyle="bold"
-            android:text="@string/glibc_exp_edition" />
-
-        <TextView
-            android:id="@+id/TVGlibcExpVersionFork"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
     </LinearLayout>
 </LinearLayout>

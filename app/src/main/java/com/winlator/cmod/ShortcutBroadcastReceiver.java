@@ -18,7 +18,7 @@ public class ShortcutBroadcastReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
-        if (action != null && action.equals("com.winlator.SHORTCUT_ADDED")) {
+        if (action != null && action.equals("com.winlator.steam.SHORTCUT_ADDED")) {
             boolean isShortcutAdded = intent.getBooleanExtra("shortcut_added", false);
             if (isShortcutAdded) {
                 Log.d(LOG_TAG, "Shortcut added successfully!");

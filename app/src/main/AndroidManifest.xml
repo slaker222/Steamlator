@@ -38,7 +38,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
-        android:label="Winlator CMOD"
+        android:label="Steamlator"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/AppTheme"
@@ -48,6 +48,7 @@
         android:allowAudioPlaybackCapture="true"
         android:hardwareAccelerated="true"
         android:supportsRtl="true"
+        android:localeConfig="@xml/locale_config"
         tools:ignore="DataExtractionRules,GoogleAppIndexingWarning">
 
         <!-- Main activity -->
@@ -81,6 +82,13 @@
             android:screenOrientation="sensorLandscape"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
             android:exported="true" />
+
+        <activity
+            android:name="com.winlator.cmod.WinecfgOverlayActivity"
+            android:theme="@style/AppThemeOverlayTranslucent"
+            android:screenOrientation="portrait"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
+            android:exported="false" />
 
         <activity
             android:name="com.winlator.cmod.XrActivity"
@@ -120,14 +128,14 @@
             android:name=".ShortcutBroadcastReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.winlator.cmod.SHORTCUT_ADDED" />
+                <action android:name="com.winlator.steam.SHORTCUT_ADDED" />
             </intent-filter>
         </receiver>
 
         <!-- FileProvider for sharing files -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.winlator.cmod.tileprovider"
+            android:authorities="com.winlator.steam.tileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
@@ -138,7 +146,7 @@
         <!-- Provider for Winlator’s DocumentProvider or similar usage -->
         <provider
             android:name=".core.WinlatorFilesProvider"
-            android:authorities="com.winlator.cmod.core.WinlatorFilesProvider"
+            android:authorities="com.winlator.steam.core.WinlatorFilesProvider"
             android:exported="true"
             android:grantUriPermissions="true"
             android:permission="android.permission.MANAGE_DOCUMENTS">
