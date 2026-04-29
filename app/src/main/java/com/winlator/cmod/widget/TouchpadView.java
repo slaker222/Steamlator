@@ -113,8 +113,25 @@ public class TouchpadView extends View {
         if (!xServer.getRenderer().isFullscreen()) {
             XForm.makeTranslation(xform, -viewTransformation.viewOffsetX, -viewTransformation.viewOffsetY);
             XForm.scale(xform, invAspect, invAspect);
-        } else
-            XForm.makeScale(xform, (float) innerWidth / outerWidth, (float) innerHeight / outerHeight);
+        } else {
+            // Apply scale: interpolate between aspect-ratio-correct (0) and full stretch (100)
+            int scale = xServer.getRenderer().getFullscreenScale();
+            if (scale >= 100) {
+                XForm.makeScale(xform, (float) innerWidth / outerWidth, (float) innerHeight / outerHeight);
+            } else if (scale <= 0) {
+                XForm.makeTranslation(xform, -viewTransformation.viewOffsetX, -viewTransformation.viewOffsetY);
+                XForm.scale(xform, invAspect, invAspect);
+            } else {
+                float t = scale / 100.0f;
+                float scaleX = (float) innerWidth / outerWidth;
+                float scaleY = (float) innerHeight / outerHeight;
+                float s = invAspect + (Math.max(scaleX, scaleY) - invAspect) * t;
+                float offX = -viewTransformation.viewOffsetX * (1.0f - t);
+                float offY = -viewTransformation.viewOffsetY * (1.0f - t);
+                XForm.makeTranslation(xform, offX, offY);
+                XForm.scale(xform, s, s);
+            }
+        }
     }
 
     private class Finger {
@@ -643,6 +660,11 @@ public class TouchpadView extends View {
     }
 
     public void toggleFullscreen() {
+        new Handler().postDelayed(() -> updateXform(getWidth(), getHeight(), xServer.screenInfo.width, xServer.screenInfo.height),
+                UPDATE_FORM_DELAYED_TIME);
+    }
+
+    public void updateFullscreenTransform() {
         new Handler().postDelayed(() -> updateXform(getWidth(), getHeight(), xServer.screenInfo.width, xServer.screenInfo.height),
                 UPDATE_FORM_DELAYED_TIME);
     }

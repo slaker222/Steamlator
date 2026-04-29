@@ -302,11 +302,21 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("WINE_X11FORCEGLX", "1");
 
         String winePath = imageFs.getWinePath() + "/bin";
+        if (wineProfile != null && wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
+            winePath = ContentsManager.getSourceFile(context, wineProfile, wineProfile.wineBinPath).getAbsolutePath();
+        }
 
         Log.d("BionicProgramLauncherComponent", "WinePath is " + winePath);
 
         envVars.put("PATH", winePath + ":" +
                 rootDir.getPath() + "/usr/bin");
+
+        if (wineProfile != null && wineProfile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
+            String wineLibPath = ContentsManager.getSourceFile(context, wineProfile, wineProfile.wineLibPath).getAbsolutePath();
+            String currentLdLibraryPath = envVars.get("LD_LIBRARY_PATH");
+            envVars.put("LD_LIBRARY_PATH", wineLibPath + ":" + currentLdLibraryPath);
+            Log.d("BionicProgramLauncherComponent", "Custom Wine lib path: " + wineLibPath);
+        }
 
  
         envVars.put("ANDROID_SYSVSHM_SERVER", rootDir.getPath() + UnixSocketConfig.SYSVSHM_SERVER_PATH);

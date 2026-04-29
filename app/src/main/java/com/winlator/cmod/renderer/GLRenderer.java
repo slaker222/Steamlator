@@ -1,6 +1,7 @@
 package com.winlator.cmod.renderer;
 
 import android.content.Context;
+import android.content.pm.ApplicationInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
@@ -44,6 +45,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private String forceFullscreenWMClass = null;
     private boolean fullscreen = false;
     private boolean toggleFullscreen = false;
+    private int fullscreenScale = 100; // 0-100, how much to stretch
     public boolean viewportNeedsUpdate = true;
     private boolean cursorVisible = true;
     private boolean rootWindowDownsized = false;
@@ -54,11 +56,22 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     public int surfaceWidth;
     public int surfaceHeight;
     private final EffectComposer effectComposer;
+    // Opt-in (default off) because glGetError()/glIsTexture() are very expensive in hot paths.
+    // Enable with: -Dcom.winlator.cmod.checkGl=1
+    private final boolean checkGlErrors;
+
+    // Small GL state cache to avoid redundant driver work in hot-path.
+    private int boundTextureId = 0;
+
+    // Cached uniform locations (valid after first material.use()).
+    private int window_uViewSize = Integer.MIN_VALUE;
+    private int cursor_uViewSize = Integer.MIN_VALUE;
 
     public GLRenderer(XServerView xServerView, XServer xServer) {
         this.xServerView = xServerView;
         this.xServer = xServer;
         this.effectComposer = new EffectComposer(this);
+        this.checkGlErrors = shouldCheckGlErrors(xServerView);
         rootCursorDrawable = createRootCursorDrawable();
 
         quadVertices.put(new float[]{
@@ -70,6 +83,22 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
         xServer.windowManager.addOnWindowModificationListener(this);
         xServer.pointer.addOnPointerMotionListener(this);
+    }
+
+    private static boolean shouldCheckGlErrors(XServerView xServerView) {
+        if ("1".equals(System.getProperty("com.winlator.cmod.checkGl"))) {
+            return true;
+        }
+        if ("0".equals(System.getProperty("com.winlator.cmod.checkGl"))) {
+            return false;
+        }
+        // Optional: enable in debuggable builds (still not free), but off by default for FPS.
+        try {
+            return (xServerView.getContext().getApplicationInfo().flags & ApplicationInfo.FLAG_DEBUGGABLE) != 0
+                && "true".equals(System.getProperty("com.winlator.cmod.checkGl.debug"));
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     @Override
@@ -110,7 +139,6 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             fullscreen = !fullscreen;
             toggleFullscreen = false;
             viewportNeedsUpdate = true;
-
         }
 
         drawFrame();
@@ -124,10 +152,25 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             xrFrame = XrActivity.getInstance().beginFrame(xrImmersive, XrActivity.getSBS());
         }
 
+        // Render uses texture unit 0 throughout.
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+
         // Update the viewport if necessary
         if (viewportNeedsUpdate && magnifierEnabled) {
             if (fullscreen) {
-                GLES20.glViewport(0, 0, surfaceWidth, surfaceHeight);
+                // Apply scale: interpolate between aspect-ratio-correct (0) and full stretch (100)
+                if (fullscreenScale >= 100) {
+                    GLES20.glViewport(0, 0, surfaceWidth, surfaceHeight);
+                } else if (fullscreenScale <= 0) {
+                    GLES20.glViewport(viewTransformation.viewOffsetX, viewTransformation.viewOffsetY, viewTransformation.viewWidth, viewTransformation.viewHeight);
+                } else {
+                    float t = fullscreenScale / 100.0f;
+                    int targetX = (int)(viewTransformation.viewOffsetX * (1.0f - t));
+                    int targetY = (int)(viewTransformation.viewOffsetY * (1.0f - t));
+                    int targetW = (int)(viewTransformation.viewWidth + (surfaceWidth - viewTransformation.viewWidth) * t);
+                    int targetH = (int)(viewTransformation.viewHeight + (surfaceHeight - viewTransformation.viewHeight) * t);
+                    GLES20.glViewport(targetX, targetY, targetW, targetH);
+                }
             }
             else {
                 GLES20.glViewport(viewTransformation.viewOffsetX, viewTransformation.viewOffsetY, viewTransformation.viewWidth, viewTransformation.viewHeight);
@@ -259,18 +302,24 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
             XForm.multiply(tmpXForm1, tmpXForm1, tmpXForm2);
 
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture.getTextureId());
+            final int texId = texture.getTextureId();
+            if (boundTextureId != texId) {
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId);
+                boundTextureId = texId;
+            }
+            // Uniform locations are cached in the material after use().
             GLES20.glUniform1i(material.getUniformLocation("texture"), 0);
             GLES20.glUniform1fv(material.getUniformLocation("xform"), tmpXForm1.length, tmpXForm1, 0);
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
         }
     }
 
     private void renderWindows(boolean forceFullscreen) {
         windowMaterial.use();
-        GLES20.glUniform2f(windowMaterial.getUniformLocation("viewSize"), xServer.screenInfo.width, xServer.screenInfo.height);
+        if (window_uViewSize == Integer.MIN_VALUE) {
+            window_uViewSize = windowMaterial.getUniformLocation("viewSize");
+        }
+        GLES20.glUniform2f(window_uViewSize, xServer.screenInfo.width, xServer.screenInfo.height);
         quadVertices.bind(windowMaterial.programId);
 
         boolean singleWindow = forceFullscreen;
@@ -295,16 +344,21 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
         quadVertices.disable();
 
-        int error = GLES20.glGetError();
-        if (error != GLES20.GL_NO_ERROR) {
-            Log.e("GLRenderer", "OpenGL Error: " + error);
+        if (checkGlErrors) {
+            int error = GLES20.glGetError();
+            if (error != GLES20.GL_NO_ERROR) {
+                Log.e("GLRenderer", "OpenGL Error: " + error);
+            }
         }
 
     }
 
     private void renderCursor() {
         cursorMaterial.use();
-        GLES20.glUniform2f(cursorMaterial.getUniformLocation("viewSize"), xServer.screenInfo.width, xServer.screenInfo.height);
+        if (cursor_uViewSize == Integer.MIN_VALUE) {
+            cursor_uViewSize = cursorMaterial.getUniformLocation("viewSize");
+        }
+        GLES20.glUniform2f(cursor_uViewSize, xServer.screenInfo.width, xServer.screenInfo.height);
         quadVertices.bind(cursorMaterial.programId);
 
         try (XLock lock = xServer.lock(XServer.Lockable.DRAWABLE_MANAGER)) {
@@ -327,12 +381,28 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         xServerView.requestRender();
     }
 
+    public void setFullscreenScale(int scale) {
+        this.fullscreenScale = Math.max(0, Math.min(100, scale));
+        if (fullscreen) {
+            viewportNeedsUpdate = true;
+            xServerView.requestRender();
+        }
+    }
+
+    public int getFullscreenScale() {
+        return fullscreenScale;
+    }
+
     private Drawable createRootCursorDrawable() {
         Context context = xServerView.getContext();
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inScaled = false;
         Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), R.drawable.cursor, options);
-        return Drawable.fromBitmap(bitmap);
+        try {
+            return Drawable.fromBitmap(bitmap);
+        } finally {
+            if (bitmap != null && !bitmap.isRecycled()) bitmap.recycle();
+        }
     }
 
     private void updateScene() {
@@ -491,16 +561,18 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             XForm.set(tmpXForm1, x, y, drawable.width, drawable.height);
             XForm.multiply(tmpXForm1, tmpXForm1, tmpXForm2);
 
-            GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texture.getTextureId());
-            if (GLES20.glIsTexture(texture.getTextureId()) == false) {
+            final int texId = texture.getTextureId();
+            if (boundTextureId != texId) {
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId);
+                boundTextureId = texId;
+            }
+            if (checkGlErrors && !GLES20.glIsTexture(texId)) {
                 Log.e("GLRenderer", "Invalid texture binding!");
             }
 
             GLES20.glUniform1i(material.getUniformLocation("texture"), 0);
             GLES20.glUniform1fv(material.getUniformLocation("xform"), tmpXForm1.length, tmpXForm1, 0);
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, quadVertices.count());
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, 0);
         }
     }
 
