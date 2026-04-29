@@ -15,10 +15,12 @@ public class Downloader {
         try {
             URL url = new URL(address);
             URLConnection connection = url.openConnection();
+            connection.setRequestProperty("User-Agent", "Steamlator/1.0");
+            connection.setRequestProperty("Accept", "*/*");
             connection.connect();
 
             // download the file
-            InputStream input = url.openStream();
+            InputStream input = connection.getInputStream();
 
             // Output stream
             OutputStream output = new FileOutputStream(file.getAbsolutePath());
@@ -47,9 +49,11 @@ public class Downloader {
         try {
             URL url = new URL(address);
             URLConnection connection = url.openConnection();
+            connection.setRequestProperty("User-Agent", "Steamlator/1.0");
+            connection.setRequestProperty("Accept", "application/json");
             connection.connect();
 
-            InputStream input = url.openStream();
+            InputStream input = connection.getInputStream();
             BufferedReader reader = new BufferedReader(new InputStreamReader(input));
             StringBuilder sb = new StringBuilder();
             String line = null;

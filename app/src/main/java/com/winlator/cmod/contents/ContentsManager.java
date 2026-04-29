@@ -9,6 +9,7 @@ import androidx.annotation.NonNull;
 
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.TarCompressorUtils;
+import com.winlator.cmod.xenvironment.ImageFs;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -125,24 +126,27 @@ public class ContentsManager {
         for (ContentProfile.ContentType type : ContentProfile.ContentType.values()) {
             List<ContentProfile> profiles = profilesMap.get(type);
 
+            // Load local profiles.
+            // Wine profiles are scanned from both new location (imagefs/opt -> Z:\\opt) and legacy location.
+            Map<String, ContentProfile> localProfiles = new HashMap<>();
+            for (File typeFile : getContentTypeDirs(context, type)) {
+                File[] fileList = typeFile.listFiles();
+                if (fileList == null) continue;
 
-            // Load local profiles
-            File typeFile = getContentTypeDir(context, type);
-            File[] fileList = typeFile.listFiles();
-            if (fileList != null) {
                 for (File file : fileList) {
                     File proFile = new File(file, PROFILE_NAME);
                     if (proFile.exists() && proFile.isFile()) {
                         ContentProfile profile = readProfile(proFile);
                         if (profile != null) {
-                            profiles.add(profile);
-                            Log.d("ContentsManager", "Local profile loaded: " + profile.verName);
+                            localProfiles.put(getEntryName(profile), profile);
+                            Log.d("ContentsManager", "Local profile loaded: " + profile.verName + " from " + typeFile.getAbsolutePath());
                         } else {
                             Log.w("ContentsManager", "Invalid local profile at: " + proFile.getAbsolutePath());
                         }
                     }
                 }
             }
+            profiles.addAll(localProfiles.values());
 
             // Add remote profiles for this type
             if (remoteProfiles != null) {
@@ -282,7 +286,17 @@ public class ContentsManager {
     }
 
     public static File getInstallDir(Context context, ContentProfile profile) {
-        return new File(getContentTypeDir(context, profile.type), profile.verName + "-" + profile.verCode);
+        String folderName = profile.verName + "-" + profile.verCode;
+        if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
+            File preferred = new File(getWinePreferredDir(context), folderName);
+            if (preferred.exists()) return preferred;
+
+            File legacy = new File(getWineLegacyDir(context), folderName);
+            if (legacy.exists()) return legacy;
+
+            return preferred;
+        }
+        return new File(getContentTypeDir(context, profile.type), folderName);
     }
 
     public static File getContentDir(Context context) {
@@ -290,7 +304,32 @@ public class ContentsManager {
     }
 
     public static File getContentTypeDir(Context context, ContentProfile.ContentType type) {
+        if (type == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
+            return getWinePreferredDir(context);
+        }
         return new File(getContentDir(context), type.toString());
+    }
+
+    private static List<File> getContentTypeDirs(Context context, ContentProfile.ContentType type) {
+        List<File> dirs = new ArrayList<>();
+        if (type == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
+            dirs.add(getWinePreferredDir(context));
+            File legacy = getWineLegacyDir(context);
+            if (!legacy.getAbsolutePath().equals(dirs.get(0).getAbsolutePath())) {
+                dirs.add(legacy);
+            }
+            return dirs;
+        }
+        dirs.add(getContentTypeDir(context, type));
+        return dirs;
+    }
+
+    private static File getWinePreferredDir(Context context) {
+        return new File(ImageFs.find(context).getRootDir(), "opt");
+    }
+
+    private static File getWineLegacyDir(Context context) {
+        return new File(getContentDir(context), ContentProfile.ContentType.CONTENT_TYPE_WINE.toString());
     }
 
     public static File getTmpDir(Context context) {
@@ -367,7 +406,13 @@ public class ContentsManager {
 
     public void removeContent(ContentProfile profile) {
         if (profilesMap.get(profile.type).contains(profile)) {
-            FileUtils.delete(getInstallDir(context, profile));
+            if (profile.type == ContentProfile.ContentType.CONTENT_TYPE_WINE) {
+                String folderName = profile.verName + "-" + profile.verCode;
+                FileUtils.delete(new File(getWinePreferredDir(context), folderName));
+                FileUtils.delete(new File(getWineLegacyDir(context), folderName));
+            } else {
+                FileUtils.delete(getInstallDir(context, profile));
+            }
             profilesMap.get(profile.type).remove(profile);
             syncContents();
         }

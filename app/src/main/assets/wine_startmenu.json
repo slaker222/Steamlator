@@ -19,7 +19,7 @@
         "name" : "System Tools",
         "children" : [
             {
-                "name" : "Computer",
+                "name" : "Steam laucher",
                 "path" : "C:/windows/wfm.exe"
             },
             {

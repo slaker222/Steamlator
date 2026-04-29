@@ -7,6 +7,8 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 
+import com.winlator.cmod.contents.ContentProfile;
+import com.winlator.cmod.contents.ContentsManager;
 import com.winlator.cmod.R;
 import com.winlator.cmod.xenvironment.ImageFs;
 
@@ -116,7 +118,32 @@ public class WineInfo implements Parcelable {
     public static WineInfo fromIdentifier(Context context, String identifier) {
         ImageFs imageFs = ImageFs.find(context);
 
-        if (identifier.equals(MAIN_WINE_VERSION.identifier())) return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, imageFs.getRootDir().getPath() + "/opt/" + MAIN_WINE_VERSION.identifier());
+        if (identifier.equals(MAIN_WINE_VERSION.identifier())) {
+            return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, imageFs.getRootDir().getPath() + "/opt/" + MAIN_WINE_VERSION.identifier());
+        }
+
+        // Content entry format: Wine-<verName>-<verCode>
+        if (identifier != null && identifier.startsWith(ContentProfile.ContentType.CONTENT_TYPE_WINE.toString() + "-")) {
+            int firstDashIndex = identifier.indexOf('-');
+            int lastDashIndex = identifier.lastIndexOf('-');
+            if (firstDashIndex > 0 && lastDashIndex > firstDashIndex) {
+                String verName = identifier.substring(firstDashIndex + 1, lastDashIndex);
+                String verCodeRaw = identifier.substring(lastDashIndex + 1);
+                try {
+                    int verCode = Integer.parseInt(verCodeRaw);
+                    Matcher contentMatcher = pattern.matcher(verName);
+                    if (contentMatcher.find()) {
+                        ContentProfile profile = new ContentProfile();
+                        profile.type = ContentProfile.ContentType.CONTENT_TYPE_WINE;
+                        profile.verName = verName;
+                        profile.verCode = verCode;
+                        String path = ContentsManager.getInstallDir(context, profile).getPath();
+                        return new WineInfo(contentMatcher.group(1), contentMatcher.group(2), contentMatcher.group(3), contentMatcher.group(4), path);
+                    }
+                } catch (NumberFormatException ignored) {
+                }
+            }
+        }
 
         Matcher matcher = pattern.matcher(identifier);
         if (matcher.find()) {
@@ -124,12 +151,12 @@ public class WineInfo implements Parcelable {
             for (String wineVersion : wineVersions) {
                 if (wineVersion.contains(identifier)) {
                     Log.d("WineInfo", "Setting identifier " + matcher.group(1) + matcher.group(2) + matcher.group(4));
-                    return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(4), imageFs.getRootDir().getPath() + "/opt/" + identifier);
+                    return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(3), matcher.group(4), imageFs.getRootDir().getPath() + "/opt/" + identifier);
                 }
             }
             File installedWineDir = imageFs.getInstalledWineDir();
             String path = (new File(installedWineDir, identifier)).getPath();
-            return new WineInfo(matcher.group(0), matcher.group(1), matcher.group(2), matcher.group(3), path);
+            return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(3), matcher.group(4), path);
         }
         else return new WineInfo(MAIN_WINE_VERSION.type, MAIN_WINE_VERSION.version, MAIN_WINE_VERSION.arch, imageFs.getRootDir().getPath() + "/opt/" + MAIN_WINE_VERSION.identifier());
     }
