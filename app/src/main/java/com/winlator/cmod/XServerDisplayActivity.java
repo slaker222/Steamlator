@@ -16,22 +16,28 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.FileObserver;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.TypedValue;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.PointerIcon;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.animation.OvershootInterpolator;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.FrameLayout;
+import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -56,12 +62,14 @@ import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.DebugDialog;
+import com.winlator.cmod.contentdialog.LimitFpsDialog;
 import com.winlator.cmod.contentdialog.ScreenEffectDialog;
 import com.winlator.cmod.contentdialog.VKD3DConfigDialog;
 import com.winlator.cmod.contents.ContentProfile;
 import com.winlator.cmod.contents.ContentsManager;
 import com.winlator.cmod.contents.AdrenotoolsManager;
 import com.winlator.cmod.core.AppUtils;
+import com.winlator.cmod.core.Callback;
 import com.winlator.cmod.core.DefaultVersion;
 import com.winlator.cmod.core.EnvVars;
 import com.winlator.cmod.core.EnvironmentManager;
@@ -95,12 +103,15 @@ import com.winlator.cmod.renderer.effects.FXAAEffect;
 import com.winlator.cmod.renderer.effects.NTSCCombinedEffect;
 import com.winlator.cmod.renderer.effects.ToonEffect;
 import com.winlator.cmod.widget.FrameRating;
+import com.winlator.cmod.widget.DebugStatsOverlay;
 import com.winlator.cmod.widget.InputControlsView;
 import com.winlator.cmod.widget.LogView;
 import com.winlator.cmod.widget.MagnifierView;
+import com.winlator.cmod.widget.QuickHudFloatingView;
 import com.winlator.cmod.widget.TouchpadView;
 import com.winlator.cmod.widget.WinetricksFloatingView;
 import com.winlator.cmod.widget.XServerView;
+import com.winlator.cmod.winhandler.OnGetProcessInfoListener;
 import com.winlator.cmod.winhandler.TaskManagerDialog;
 import com.winlator.cmod.winhandler.WinHandler;
 import com.winlator.cmod.xconnector.UnixSocketConfig;
@@ -161,6 +172,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private InputControlsManager inputControlsManager;
     private ImageFs imageFs;
     private FrameRating frameRating = null;
+    private DebugStatsOverlay debugStatsOverlay = null;
+    private QuickHudFloatingView quickHudFloatingView = null;
     private Runnable editInputControlsCallback;
     private Shortcut shortcut;
     private String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
@@ -220,6 +233,54 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private EnvVars overrideEnvVars;
 
     private WinetricksFloatingView winetricksFloatingView;
+    private boolean winecfgOverlayMode = false;
+    private boolean overlayTouchPressed = false;
+    private int overlayTouchPointerId = -1;
+    private int overlayWinecfgWindowId = -1;
+    private boolean overlayWinecfgClosedUiShown = false;
+    private boolean overlayProcessWatcherRunning = false;
+    private boolean overlayWinecfgSeenThisScan = false;
+    private boolean overlayWinecfgEverSeen = false;
+    private boolean overlayFinishRequested = false;
+    private boolean overlaySessionShutdown = false;
+    private long overlayWatchStartTimeMs = 0L;
+    private long overlayWinecfgLastSeenTimeMs = 0L;
+    private String overlayTargetProcessName = "winecfg.exe";
+    private OnGetProcessInfoListener previousProcessInfoListener = null;
+    private final ArrayDeque<String> startupLogLines = new ArrayDeque<>();
+    private static final int STARTUP_LOG_MAX_LINES = 120;
+    private Callback<String> startupProcessDebugCallback = null;
+    private volatile boolean startupDiagnosticsEnabled = false;
+    private final Handler overlayWatchHandler = new Handler(Looper.getMainLooper());
+    private static final long OVERLAY_WINECFG_POLL_INTERVAL_MS = 1000L;
+    private static final long OVERLAY_WINECFG_START_TIMEOUT_MS = 30000L;
+    private static final long OVERLAY_WINECFG_MISS_TIMEOUT_MS = 3000L;
+    private final OnGetProcessInfoListener overlayProcessInfoListener = (index, numProcesses, processInfo) -> {
+        if (!winecfgOverlayMode || !overlayProcessWatcherRunning || overlayFinishRequested) return;
+
+        if (index == 0) {
+            overlayWinecfgSeenThisScan = false;
+        }
+
+        if (processInfo != null && processInfo.name != null && processInfo.name.equalsIgnoreCase(overlayTargetProcessName)) {
+            overlayWinecfgSeenThisScan = true;
+        }
+
+        if (numProcesses == 0 || index == numProcesses - 1) {
+            long now = System.currentTimeMillis();
+            if (overlayWinecfgSeenThisScan) {
+                overlayWinecfgEverSeen = true;
+                overlayWinecfgLastSeenTimeMs = now;
+                return;
+            }
+
+            boolean startTimeout = !overlayWinecfgEverSeen && (now - overlayWatchStartTimeMs) >= OVERLAY_WINECFG_START_TIMEOUT_MS;
+            boolean processMissingTimeout = overlayWinecfgEverSeen && (now - overlayWinecfgLastSeenTimeMs) >= OVERLAY_WINECFG_MISS_TIMEOUT_MS;
+            if (startTimeout || processMissingTimeout) {
+                showWinecfgClosedActionsIfNeeded(overlayTargetProcessName + " not running");
+            }
+        }
+    };
 
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
@@ -251,10 +312,21 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        winecfgOverlayMode = getIntent().getBooleanExtra("winecfg_overlay_mode", false);
+        String execPath = getIntent().getStringExtra("exec_path");
+        if (execPath != null && !execPath.isEmpty()) {
+            overlayTargetProcessName = FileUtils.getName(execPath);
+        }
+        if (winecfgOverlayMode) {
+            setTheme(R.style.AppThemeOverlayTranslucent);
+        }
         super.onCreate(savedInstanceState);
         AppUtils.hideSystemUI(this);
         AppUtils.keepScreenOn(this);
         setContentView(R.layout.xserver_display_activity);
+        if (winecfgOverlayMode) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+        }
 
 //        String RESTART_TRIGGER_PATH = "/data/user/0/com.winlator/files/imagefs/tmp/winlator_restart_trigger";
 //        String RESTART_TRIGGER_DIR = "/data/user/0/com.winlator/files/imagefs/tmp/";
@@ -288,22 +360,23 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
 
 
-        final PreloaderDialog preloaderDialog = new PreloaderDialog(this);
+        preloaderDialog = new PreloaderDialog(this).setTransparentBackdrop(winecfgOverlayMode);
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
 
 
         // Check for Dark Mode
-        isDarkMode = preferences.getBoolean("dark_mode", false);
+        isDarkMode = preferences.getBoolean("dark_mode", true);
 
         boolean isOpenWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", false);
         boolean isShareAndroidClipboard = preferences.getBoolean("share_android_clipboard", false);
+        final boolean fastWinecfgStartup = isWinecfgFastStartupMode();
 
         // Initialize the WinHandler after context is set up
         winHandler = new WinHandler(this);
         winHandler.initializeController();
         controller = winHandler.getCurrentController();
 
-        if (isOpenWithAndroidBrowser || isShareAndroidClipboard)
+        if (!fastWinecfgStartup && (isOpenWithAndroidBrowser || isShareAndroidClipboard))
             wineRequestHandler = new WineRequestHandler(this);
 
         if (controller != null) {
@@ -319,32 +392,36 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
 
 
-        // Initialize SensorManager
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+        if (!fastWinecfgStartup) {
+            // Initialize SensorManager
+            sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+            gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
 
-        boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
+            boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
 
-        if (gyroEnabled) {
-            // Register the sensor event listener
-            sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
+            if (gyroEnabled && sensorManager != null && gyroSensor != null) {
+                // Register the sensor event listener
+                sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
+            }
         }
 
 
 
-        // Record the start time
-        startTime = System.currentTimeMillis();
+        if (!fastWinecfgStartup) {
+            // Record the start time
+            startTime = System.currentTimeMillis();
 
-        // Initialize handler for periodic saving
-        handler = new Handler(Looper.getMainLooper());
-        savePlaytimeRunnable = new Runnable() {
-            @Override
-            public void run() {
-                savePlaytimeData();
-                handler.postDelayed(this, SAVE_INTERVAL_MS);
-            }
-        };
-        handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
+            // Initialize handler for periodic saving
+            handler = new Handler(Looper.getMainLooper());
+            savePlaytimeRunnable = new Runnable() {
+                @Override
+                public void run() {
+                    savePlaytimeData();
+                    handler.postDelayed(this, SAVE_INTERVAL_MS);
+                }
+            };
+            handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
+        }
 
 
         // Handler and Runnable to manage timeout for hiding controls
@@ -360,11 +437,15 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
 
         contentsManager = new ContentsManager(this);
-        contentsManager.syncContents();
+        if (!fastWinecfgStartup) contentsManager.syncContents();
 
         drawerLayout = findViewById(R.id.DrawerLayout);
         drawerLayout.setOnApplyWindowInsetsListener((view, windowInsets) -> windowInsets.replaceSystemWindowInsets(0, 0, 0, 0));
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+        if (winecfgOverlayMode) {
+            drawerLayout.setBackgroundColor(0x00000000);
+            drawerLayout.setScrimColor(0x00000000);
+        }
 
         NavigationView navigationView = findViewById(R.id.NavigationView);
 
@@ -380,17 +461,24 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         navigationView.setNavigationItemSelectedListener(this);
         navigationView.setPointerIcon(PointerIcon.getSystemIcon(this, PointerIcon.TYPE_ARROW));
         navigationView.setOnFocusChangeListener((v, hasFocus) -> navigationFocused = hasFocus);
-        drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
-            @Override
-            public void onDrawerOpened(View drawerView) {
-                super.onDrawerOpened(drawerView);
-                navigationView.requestFocus();
-            }
-        });
+        if (winecfgOverlayMode) {
+            navigationView.setVisibility(View.GONE);
+        } else {
+            drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+                @Override
+                public void onDrawerOpened(View drawerView) {
+                    super.onDrawerOpened(drawerView);
+                    navigationView.requestFocus();
+                }
+            });
+        }
 
         imageFs = ImageFs.find(this);
 
         String screenSize = Container.DEFAULT_SCREEN_SIZE;
+        if (winecfgOverlayMode) {
+            screenSize = "420x460";
+        }
         if (!isGenerateWineprefix()) {
             containerManager = new ContainerManager(this);
             container = containerManager.getContainerById(getIntent().getIntExtra("container_id", 0));
@@ -418,23 +506,25 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
 
 
-            // Initialize playtime tracking
-            playtimePrefs = getSharedPreferences("playtime_stats", MODE_PRIVATE);
-            shortcutName = getIntent().getStringExtra("shortcut_name");
+            if (!fastWinecfgStartup) {
+                // Initialize playtime tracking
+                playtimePrefs = getSharedPreferences("playtime_stats", MODE_PRIVATE);
+                shortcutName = getIntent().getStringExtra("shortcut_name");
 
-            // Ensure shortcutPath is not null before proceeding
-            if (shortcutPath != null && !shortcutPath.isEmpty()) {
-                if (shortcutName == null || shortcutName.isEmpty()) {
-                    shortcutName = parseShortcutNameFromDesktopFile(new File(shortcutPath));
-                    Log.d("XServerDisplayActivity", "Parsed Shortcut Name from .desktop file: " + shortcutName);
+                // Ensure shortcutPath is not null before proceeding
+                if (shortcutPath != null && !shortcutPath.isEmpty()) {
+                    if (shortcutName == null || shortcutName.isEmpty()) {
+                        shortcutName = parseShortcutNameFromDesktopFile(new File(shortcutPath));
+                        Log.d("XServerDisplayActivity", "Parsed Shortcut Name from .desktop file: " + shortcutName);
+                    }
+                } else {
+                    Log.d("XServerDisplayActivity", "No shortcut path provided, skipping shortcut parsing.");
                 }
-            } else {
-                Log.d("XServerDisplayActivity", "No shortcut path provided, skipping shortcut parsing.");
+
+
+                // Increment play count at the start of a session
+                incrementPlayCount();
             }
-
-
-            // Increment play count at the start of a session
-            incrementPlayCount();
 
             // Log the final container_id
             Log.d("XServerDisplayActivity", "Final Container ID: " + containerId);
@@ -450,28 +540,29 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
             containerManager.activateContainer(container);
 
-            // Initialize Win32AppWorkarounds
-            win32AppWorkarounds = new Win32AppWorkarounds(this);
+            if (!fastWinecfgStartup) {
+                // Initialize Win32AppWorkarounds
+                win32AppWorkarounds = new Win32AppWorkarounds(this);
 
-            // Determine the class name for the startup workarounds
-            String wmClass = shortcut != null ? shortcut.getExtra("wmClass", "") : "";
-            Log.d("XServerDisplayActivity", "Startup wmClass: " + wmClass);
+                // Determine the class name for the startup workarounds
+                String wmClass = shortcut != null ? shortcut.getExtra("wmClass", "") : "";
+                Log.d("XServerDisplayActivity", "Startup wmClass: " + wmClass);
 
-            if (!wmClass.isEmpty()) {
-                // Apply startup workarounds based on wmClass
-                win32AppWorkarounds.applyStartupWorkarounds(wmClass);
-            } else {
-                // Fallback: Use the executable name for workarounds
-                String execPath = getIntent().getStringExtra("exec_path");
-                Log.d("XServerDisplayActivity", "Startup execPath: " + execPath);
-
-                if (execPath != null && !execPath.isEmpty()) {
-                    String execName = FileUtils.getName(execPath);
-                    Log.d("XServerDisplayActivity", "Startup execName: " + execName);
-
-                    win32AppWorkarounds.applyStartupWorkarounds(execName);
+                if (!wmClass.isEmpty()) {
+                    // Apply startup workarounds based on wmClass
+                    win32AppWorkarounds.applyStartupWorkarounds(wmClass);
                 } else {
-                    Log.w("XServerDisplayActivity", "No wmClass or execPath provided for startup workarounds.");
+                    // Fallback: Use the executable name for workarounds
+                    Log.d("XServerDisplayActivity", "Startup execPath: " + execPath);
+
+                    if (execPath != null && !execPath.isEmpty()) {
+                        String execName = FileUtils.getName(execPath);
+                        Log.d("XServerDisplayActivity", "Startup execName: " + execName);
+
+                        win32AppWorkarounds.applyStartupWorkarounds(execName);
+                    } else {
+                        Log.w("XServerDisplayActivity", "No wmClass or execPath provided for startup workarounds.");
+                    }
                 }
             }
 
@@ -489,7 +580,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
 
             ProcessHelper.removeAllDebugCallbacks();
-            if (enableLogs) {
+            if (enableLogs && !fastWinecfgStartup) {
                 LogView.setFilename(getExecutable());
                 ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
             }
@@ -503,7 +594,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             Log.d("XServerDisplayActivity", "Execution Delay: " + execDelay);
 
             // If a secondary executable is specified, schedule it
-            if (secondaryExec != null && !secondaryExec.isEmpty() && execDelay > 0) {
+            if (!fastWinecfgStartup && secondaryExec != null && !secondaryExec.isEmpty() && execDelay > 0) {
                 scheduleSecondaryExecution(secondaryExec, execDelay);
                 Log.d("XServerDisplayActivity", "Scheduling secondary execution: " + secondaryExec + " with delay: " + execDelay);
             } else {
@@ -517,7 +608,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             dxwrapper = container.getDXWrapper();
             ddrawrapper = container.getDDrawWrapper();
             String dxwrapperConfig = container.getDXWrapperConfig();
-            screenSize = container.getScreenSize();
+            screenSize = winecfgOverlayMode ? "420x460" : container.getScreenSize();
             winHandler.setInputType((byte) container.getInputType());
             lc_all = container.getLC_ALL();
 
@@ -532,7 +623,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 dxwrapper = shortcut.getExtra("dxwrapper", container.getDXWrapper());
                 ddrawrapper = shortcut.getExtra("ddrawrapper", container.getDDrawWrapper());
                 dxwrapperConfig = shortcut.getExtra("dxwrapperConfig", container.getDXWrapperConfig());
-                screenSize = shortcut.getExtra("screenSize", container.getScreenSize());
+                if (!winecfgOverlayMode) {
+                    screenSize = shortcut.getExtra("screenSize", container.getScreenSize());
+                }
                 lc_all = shortcut.getExtra("lc_all", container.getLC_ALL());
                 String inputType = shortcut.getExtra("inputType");
                 if (!inputType.isEmpty()) winHandler.setInputType(Byte.parseByte(inputType));
@@ -561,7 +654,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
         }
 
-        preloaderDialog.show(R.string.starting_up);
+        preloaderDialog.show(
+                winecfgOverlayMode
+                        ? ("regedit.exe".equalsIgnoreCase(overlayTargetProcessName) ? R.string.starting_regedit : R.string.starting_winecfg)
+                        : R.string.starting_up
+        );
+        startStartupDiagnostics();
+        appendStartupStep("Preparing startup sequence");
 
 
         inputControlsManager = new InputControlsManager(this);
@@ -578,17 +677,35 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             public void onUpdateWindowContent(Window window) {
                 if (!winStarted[0] && window.isApplicationWindow()) {
                     xServerView.getRenderer().setCursorVisible(true);
+                    showWinecfgOverlaySurfaceIfNeeded();
+                    stopStartupDiagnostics();
                     preloaderDialog.closeOnUiThread();
                     winStarted[0] = true;
                 }
-                    
-                if (frameRatingWindowId == window.id) frameRating.update();
+
+                if (frameRatingWindowId == window.id) {
+                    if (frameRating != null) frameRating.update();
+                }
+
             }
            
             @Override
             public void onMapWindow(Window window) {
                 // Log the class name of the mapped window
                 Log.d("XServerDisplayActivity", "onMapWindow: Detected window className: " + window.getClassName());
+
+                if (winecfgOverlayMode && !winStarted[0]) {
+                    String className = window.getClassName();
+                    String lowerClassName = className == null ? "" : className.toLowerCase();
+                    if (!lowerClassName.isEmpty() && !lowerClassName.contains("explorer.exe") && !lowerClassName.contains("winhandler.exe")) {
+                        overlayWinecfgWindowId = window.id;
+                        xServerView.getRenderer().setCursorVisible(true);
+                        showWinecfgOverlaySurfaceIfNeeded();
+                        stopStartupDiagnostics();
+                        preloaderDialog.closeOnUiThread();
+                        winStarted[0] = true;
+                    }
+                }
 
                 // Apply task affinity and other workarounds
                 if (win32AppWorkarounds != null) {
@@ -597,7 +714,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
                     // Assign CPU affinity for the process
                     win32AppWorkarounds.assignTaskAffinity(window);
-                } else {
+                } else if (!fastWinecfgStartup) {
                     Log.e("XServerDisplayActivity", "win32AppWorkarounds is null in onMapWindow.");
                 }
             }
@@ -610,10 +727,15 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             @Override
             public void onUnmapWindow(Window window) {
                 changeFrameRatingVisibility(window, null);
+                if (winecfgOverlayMode && !overlayFinishRequested) {
+                    if (overlayWinecfgWindowId != -1 && window.id == overlayWinecfgWindowId) {
+                        showWinecfgClosedActionsIfNeeded(overlayTargetProcessName + " window unmapped");
+                    }
+                }
             }
         });
 
-        if (!midiSoundFont.equals("")) {
+        if (!fastWinecfgStartup && !midiSoundFont.equals("")) {
             InputStream in = null;
             InputStream finalIn = in;
             MidiManager.OnMidiLoadedCallback callback = new MidiManager.OnMidiLoadedCallback() {
@@ -645,42 +767,53 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         Runnable runnable = () -> {
             setupUI();
-            if (controlsProfile.isEmpty()) {
+            if (controlsProfile.isEmpty() && !winecfgOverlayMode) {
                 // No profile defined, run the simulated dialog confirmation for input controls
                 simulateConfirmInputControlsDialog();
             }
             Executors.newSingleThreadExecutor().execute(() -> {
-                    
-                if (!isGenerateWineprefix()) {
+                try {
+                    if (!isGenerateWineprefix()) {
+                        if (fastWinecfgStartup) {
+                            appendStartupStep("Fast startup mode: skipping full container preparation");
+                            Log.d("XServerDisplayActivity", "Winecfg fast startup: skipping full container prep.");
+                        } else {
+                            appendStartupStep("Applying wine system files");
+                            setupWineSystemFiles();
+                            appendStartupStep("Configuring graphics driver files");
+                            extractGraphicsDriverFiles();
+                            appendStartupStep("Applying audio driver settings");
+                            changeWineAudioDriver();
+                        }
+                        if (container != null) {
+                            if (!wineInfo.isArm64EC())
+                                envVars.put("HODLL", "wow64cpu.dll");
+                            else if (emulator.toLowerCase().equals("fexcore"))
+                                envVars.put("HODLL", "libwow64fex.dll");
+                            else
+                                envVars.put("HODLL", "wowbox64.dll");
+                            appendStartupStep("Selected HODLL: " + envVars.get("HODLL"));
 
-                    setupWineSystemFiles();
-                    extractGraphicsDriverFiles();
-//                    container.setGraphicsDriverVersion(originalContainerDriverVersion);
-//                    container.saveData();
-                    changeWineAudioDriver();
-                    if (container != null) {
-                        if (!wineInfo.isArm64EC())
-                            envVars.put("HODLL", "wow64cpu.dll");
-                        else if (emulator.toLowerCase().equals("fexcore"))
-                            envVars.put("HODLL", "libwow64fex.dll");
-                        else
-                            envVars.put("HODLL", "wowbox64.dll");
-                        if (isOpenWithAndroidBrowser)
-                            envVars.put("WINE_OPEN_WITH_ANDROID_BROWSER", "1");
-                        if (isShareAndroidClipboard) {
-                            envVars.put("WINE_FROM_ANDROID_CLIPBOARD", "1");
-                            envVars.put("WINE_TO_ANDROID_CLIPBOARD", "1");
+                            if (!fastWinecfgStartup && isOpenWithAndroidBrowser) {
+                                envVars.put("WINE_OPEN_WITH_ANDROID_BROWSER", "1");
+                                appendStartupStep("Enabled Android browser integration");
+                            }
+                            if (!fastWinecfgStartup && isShareAndroidClipboard) {
+                                envVars.put("WINE_FROM_ANDROID_CLIPBOARD", "1");
+                                envVars.put("WINE_TO_ANDROID_CLIPBOARD", "1");
+                                appendStartupStep("Enabled Android clipboard sharing");
+                            }
                         }
                     }
-//                    runWinetricksAfterSetup();
-                    // Run winetricks before setting up the X environment
-//                    runWinetricks("--force vcrun2010");  // Replace with the desired winetricks arguments
 
-                }
-                try {
+                    appendStartupStep("Starting X environment components");
                     setupXEnvironment();
                 } catch (PackageManager.NameNotFoundException e) {
+                    appendStartupError("Package lookup failed: " + e.getMessage());
                     throw new RuntimeException(e);
+                } catch (Exception e) {
+                    appendStartupError("Startup exception: " + e.getClass().getSimpleName() + ": " + e.getMessage());
+                    Log.e("XServerDisplayActivity", "Unhandled startup exception", e);
                 }
 
 //                runWinetricksAfterSetup();
@@ -689,7 +822,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             });
         };
 
-        if (xServer.screenInfo.height > xServer.screenInfo.width) {
+        if (winecfgOverlayMode) {
+            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+            runnable.run();
+        } else if (xServer.screenInfo.height > xServer.screenInfo.width) {
             setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
             configChangedCallback = runnable;
         } else
@@ -722,6 +858,317 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
         // Return false for any other value, including "false", "0", "no"
         return false;
+    }
+
+    private void startStartupDiagnostics() {
+        if (preloaderDialog == null) return;
+        startupDiagnosticsEnabled = true;
+        startupLogLines.clear();
+        runOnUiThread(() -> {
+            if (preloaderDialog == null) return;
+            preloaderDialog.setDetailsVisible(true);
+            preloaderDialog.clearDetails();
+        });
+
+        if (startupProcessDebugCallback == null) {
+            startupProcessDebugCallback = line -> {
+                if (!startupDiagnosticsEnabled || line == null || line.trim().isEmpty()) return;
+                String lower = line.toLowerCase();
+                if (lower.contains("error") || lower.contains("failed") || lower.contains("exception")) {
+                    appendStartupError("Process: " + line);
+                } else {
+                    appendStartupStep("Process: " + line);
+                }
+            };
+            ProcessHelper.addDebugCallback(startupProcessDebugCallback);
+        }
+
+        appendStartupStep("Startup diagnostics enabled");
+    }
+
+    private void stopStartupDiagnostics() {
+        startupDiagnosticsEnabled = false;
+        if (startupProcessDebugCallback != null) {
+            ProcessHelper.removeDebugCallback(startupProcessDebugCallback);
+            startupProcessDebugCallback = null;
+        }
+    }
+
+    private void appendStartupStep(String message) {
+        appendStartupLine("• " + message);
+    }
+
+    private void appendStartupError(String message) {
+        appendStartupLine("! " + message);
+    }
+
+    private void appendStartupLine(String line) {
+        if (!startupDiagnosticsEnabled || line == null) return;
+        synchronized (startupLogLines) {
+            startupLogLines.addLast(line);
+            while (startupLogLines.size() > STARTUP_LOG_MAX_LINES) startupLogLines.removeFirst();
+        }
+        Log.d("StartupTrace", line);
+        runOnUiThread(() -> {
+            if (preloaderDialog == null || !preloaderDialog.isShowing()) return;
+            preloaderDialog.clearDetails();
+            synchronized (startupLogLines) {
+                for (String entry : startupLogLines) preloaderDialog.appendDetailLine(entry);
+            }
+        });
+    }
+
+    private boolean isWinecfgFastStartupMode() {
+        return winecfgOverlayMode;
+    }
+
+    private void startOverlayWinecfgWatcher() {
+        if (!winecfgOverlayMode || winHandler == null || overlayProcessWatcherRunning) return;
+
+        overlayProcessWatcherRunning = true;
+        overlayFinishRequested = false;
+        overlayWinecfgEverSeen = false;
+        overlayWinecfgSeenThisScan = false;
+        overlayWatchStartTimeMs = System.currentTimeMillis();
+        overlayWinecfgLastSeenTimeMs = overlayWatchStartTimeMs;
+
+        previousProcessInfoListener = winHandler.getOnGetProcessInfoListener();
+        winHandler.setOnGetProcessInfoListener(overlayProcessInfoListener);
+
+        overlayWatchHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (!overlayProcessWatcherRunning || !winecfgOverlayMode || overlayFinishRequested || isFinishing() || isDestroyed()) {
+                    return;
+                }
+
+                if (winHandler != null) {
+                    winHandler.listProcesses();
+                }
+                overlayWatchHandler.postDelayed(this, OVERLAY_WINECFG_POLL_INTERVAL_MS);
+            }
+        }, OVERLAY_WINECFG_POLL_INTERVAL_MS);
+    }
+
+    private void stopOverlayWinecfgWatcher() {
+        overlayProcessWatcherRunning = false;
+        overlayWatchHandler.removeCallbacksAndMessages(null);
+
+        if (winHandler != null) {
+            OnGetProcessInfoListener current = winHandler.getOnGetProcessInfoListener();
+            if (current == overlayProcessInfoListener) {
+                winHandler.setOnGetProcessInfoListener(previousProcessInfoListener);
+            }
+        }
+        previousProcessInfoListener = null;
+    }
+
+    private void requestOverlayFinish(String reason) {
+        if (overlayFinishRequested) return;
+        overlayFinishRequested = true;
+        Log.d("XServerDisplayActivity", "Closing winecfg overlay: " + reason);
+        stopOverlayWinecfgWatcher();
+        if (overlayTouchPressed && xServer != null) {
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+            overlayTouchPressed = false;
+            overlayTouchPointerId = -1;
+        }
+        runOnUiThread(() -> {
+            shutdownOverlayWinecfgSessionIfNeeded("requestOverlayFinish");
+            finish();
+        });
+    }
+
+    private synchronized void shutdownOverlayWinecfgSessionIfNeeded(String source) {
+        if (!winecfgOverlayMode || overlaySessionShutdown) return;
+        overlaySessionShutdown = true;
+
+        Log.d("XServerDisplayActivity", "Shutting down winecfg overlay session from: " + source);
+        stopOverlayWinecfgWatcher();
+
+        if (touchpadView != null) {
+            touchpadView.releasePointerCapture();
+            touchpadView.setOnCapturedPointerListener(null);
+        }
+        pointerCaptureRequested = false;
+
+        if (overlayTouchPressed && xServer != null) {
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+            overlayTouchPressed = false;
+            overlayTouchPointerId = -1;
+        }
+
+        if (environment != null) environment.stopEnvironmentComponents();
+        if (winHandler != null) winHandler.stop();
+        if (wineRequestHandler != null) wineRequestHandler.stop();
+
+        // Close all Wine processes started by this overlay session.
+        ProcessHelper.terminateAllWineProcesses();
+    }
+
+    private void showWinecfgClosedActionsIfNeeded(String reason) {
+        if (!winecfgOverlayMode || overlayFinishRequested || overlayWinecfgClosedUiShown) return;
+        overlayWinecfgClosedUiShown = true;
+
+        Log.d("XServerDisplayActivity", "Winecfg closed, showing exit action: " + reason);
+        stopOverlayWinecfgWatcher();
+
+        if (overlayTouchPressed && xServer != null) {
+            xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+            overlayTouchPressed = false;
+            overlayTouchPointerId = -1;
+        }
+
+        if (touchpadView != null) {
+            touchpadView.releasePointerCapture();
+            touchpadView.setOnCapturedPointerListener(null);
+        }
+        pointerCaptureRequested = false;
+
+        runOnUiThread(() -> {
+            if (xServerView != null) xServerView.setVisibility(View.INVISIBLE);
+            if (touchpadView != null) touchpadView.setVisibility(View.INVISIBLE);
+            if (quickHudFloatingView != null) {
+                quickHudFloatingView.setVisibility(View.VISIBLE);
+                quickHudFloatingView.enableCenteredExpandedPlainMode();
+                quickHudFloatingView.bringToFront();
+            }
+            if (preloaderDialog != null && preloaderDialog.isShowing()) preloaderDialog.close();
+        });
+    }
+
+    private void showWinecfgOverlaySurfaceIfNeeded() {
+        if (!winecfgOverlayMode) return;
+        overlayWinecfgClosedUiShown = false;
+        runOnUiThread(() -> {
+            if (xServerView != null) xServerView.setVisibility(View.VISIBLE);
+            if (touchpadView != null) touchpadView.setVisibility(View.VISIBLE);
+            if (quickHudFloatingView != null) {
+                quickHudFloatingView.setVisibility(View.VISIBLE);
+                quickHudFloatingView.enableCenteredExpandedPlainMode();
+                quickHudFloatingView.bringToFront();
+            }
+        });
+    }
+
+    private int mapOverlayTouchX(float touchX) {
+        int width = Math.max(1, xServerView.getWidth());
+        return Mathf.clamp(Math.round((touchX / width) * xServer.screenInfo.width), 0, xServer.screenInfo.width - 1);
+    }
+
+    private int mapOverlayTouchY(float touchY) {
+        int height = Math.max(1, xServerView.getHeight());
+        return Mathf.clamp(Math.round((touchY / height) * xServer.screenInfo.height), 0, xServer.screenInfo.height - 1);
+    }
+
+    private boolean handleOverlayDirectTouch(MotionEvent event) {
+        if (xServer == null || xServerView == null) return false;
+
+        int action = event.getActionMasked();
+        int actionIndex = event.getActionIndex();
+
+        switch (action) {
+            case MotionEvent.ACTION_DOWN:
+            case MotionEvent.ACTION_POINTER_DOWN: {
+                if (!overlayTouchPressed) {
+                    overlayTouchPointerId = event.getPointerId(actionIndex);
+                    overlayTouchPressed = true;
+                    int x = mapOverlayTouchX(event.getX(actionIndex));
+                    int y = mapOverlayTouchY(event.getY(actionIndex));
+                    xServer.injectPointerMove(x, y);
+                    xServer.injectPointerButtonPress(Pointer.Button.BUTTON_LEFT);
+                }
+                return true;
+            }
+            case MotionEvent.ACTION_MOVE: {
+                if (!overlayTouchPressed) return true;
+                int pointerIndex = event.findPointerIndex(overlayTouchPointerId);
+                if (pointerIndex >= 0) {
+                    int x = mapOverlayTouchX(event.getX(pointerIndex));
+                    int y = mapOverlayTouchY(event.getY(pointerIndex));
+                    xServer.injectPointerMove(x, y);
+                }
+                return true;
+            }
+            case MotionEvent.ACTION_UP:
+            case MotionEvent.ACTION_POINTER_UP:
+            case MotionEvent.ACTION_CANCEL: {
+                if (!overlayTouchPressed) return true;
+
+                int releasedPointerId = event.getPointerId(actionIndex);
+                if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL || releasedPointerId == overlayTouchPointerId) {
+                    int pointerIndex = event.findPointerIndex(overlayTouchPointerId);
+                    if (pointerIndex < 0) pointerIndex = actionIndex;
+                    int x = mapOverlayTouchX(event.getX(pointerIndex));
+                    int y = mapOverlayTouchY(event.getY(pointerIndex));
+                    xServer.injectPointerMove(x, y);
+                    xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+                    overlayTouchPointerId = -1;
+                    overlayTouchPressed = false;
+                }
+                return true;
+            }
+            default:
+                return false;
+        }
+    }
+
+    private void setupQuickHud(FrameLayout rootView, boolean forceEnable) {
+        if (container == null) return;
+        if (!forceEnable && !container.isQuickHUD()) return;
+        if (quickHudFloatingView != null) return;
+
+        quickHudFloatingView = new QuickHudFloatingView(this);
+        quickHudFloatingView.setQuickHudListener(new QuickHudFloatingView.QuickHudListener() {
+            @Override
+            public void onKeyboard() {
+                AppUtils.showKeyboard(XServerDisplayActivity.this);
+            }
+
+            @Override
+            public void onInputControls() {
+                showInputControlsFPS();
+            }
+
+            @Override
+            public void onPipMode() {}
+
+            @Override
+            public void onClose() {
+                if (winecfgOverlayMode) {
+                    requestOverlayFinish("quick hud close pressed");
+                    return;
+                }
+                if (quickHudFloatingView != null) {
+                    if (container != null && !winecfgOverlayMode) {
+                        container.setQuickHUD(false);
+                        container.saveData();
+                    }
+                    rootView.removeView(quickHudFloatingView);
+                    quickHudFloatingView = null;
+                }
+            }
+        });
+        rootView.addView(quickHudFloatingView);
+        if (winecfgOverlayMode) {
+            rootView.post(() -> {
+                if (quickHudFloatingView != null) {
+                    quickHudFloatingView.enableCenteredExpandedPlainMode();
+                    quickHudFloatingView.bringToFront();
+                }
+            });
+        } else {
+            rootView.post(() -> {
+                int parentWidth = rootView.getWidth();
+                int bubbleSize = (int) (52 * getResources().getDisplayMetrics().density);
+                int margin = (int) (12 * getResources().getDisplayMetrics().density);
+                int x = parentWidth - bubbleSize - margin;
+                int y = margin;
+                if (quickHudFloatingView != null) {
+                    quickHudFloatingView.setBubblePosition(x, y);
+                }
+            });
+        }
     }
 
 
@@ -805,7 +1252,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         super.onResume();
         boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
 
-        if (gyroEnabled) {
+        if (!winecfgOverlayMode && gyroEnabled && sensorManager != null && gyroSensor != null) {
             // Re-register the sensor listener when the activity is resumed
             sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
         }
@@ -814,17 +1261,30 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             xServerView.onResume();
             environment.onResume();
         }
-        startTime = System.currentTimeMillis();
-        handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
+        if (winecfgOverlayMode) {
+            startOverlayWinecfgWatcher();
+        }
+        if (!winecfgOverlayMode && handler != null && savePlaytimeRunnable != null) {
+            startTime = System.currentTimeMillis();
+            handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
+        }
 
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        if (winecfgOverlayMode) {
+            stopOverlayWinecfgWatcher();
+            if (overlayTouchPressed && xServer != null) {
+                xServer.injectPointerButtonRelease(Pointer.Button.BUTTON_LEFT);
+                overlayTouchPressed = false;
+                overlayTouchPointerId = -1;
+            }
+        }
         boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
 
-        if (gyroEnabled) {
+        if (!winecfgOverlayMode && gyroEnabled && sensorManager != null) {
             // Unregister the sensor listener when the activity is paused
             sensorManager.unregisterListener(gyroListener);
         }
@@ -838,12 +1298,15 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
         }
 
-        savePlaytimeData();
-        handler.removeCallbacks(savePlaytimeRunnable);
+        if (!winecfgOverlayMode && handler != null && savePlaytimeRunnable != null) {
+            savePlaytimeData();
+            handler.removeCallbacks(savePlaytimeRunnable);
+        }
     }
 
 
     private void savePlaytimeData() {
+        if (playtimePrefs == null || shortcutName == null || shortcutName.isEmpty()) return;
         long endTime = System.currentTimeMillis();
         long playtime = endTime - startTime;
 
@@ -866,6 +1329,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
 
     private void incrementPlayCount() {
+        if (playtimePrefs == null || shortcutName == null || shortcutName.isEmpty()) return;
         SharedPreferences.Editor editor = playtimePrefs.edit();
         String playCountKey = shortcutName + "_play_count";
         int playCount = playtimePrefs.getInt(playCountKey, 0) + 1;
@@ -874,6 +1338,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void exit() {
+        stopOverlayWinecfgWatcher();
+        stopStartupDiagnostics();
         if (midiHandler != null) midiHandler.stop();
         // Unregister sensor listener to avoid memory leaks
         if (sensorManager != null) sensorManager.unregisterListener(gyroListener);
@@ -896,17 +1362,27 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     @Override
     protected void onDestroy() {
-        savePlaytimeData(); // Save on destroy
-        handler.removeCallbacks(savePlaytimeRunnable);
+        stopOverlayWinecfgWatcher();
+        stopStartupDiagnostics();
+        if (winecfgOverlayMode) {
+            shutdownOverlayWinecfgSessionIfNeeded("onDestroy");
+        }
+        if (!winecfgOverlayMode && handler != null && savePlaytimeRunnable != null) {
+            savePlaytimeData(); // Save on destroy
+            handler.removeCallbacks(savePlaytimeRunnable);
+        }
         if (restartTriggerObserver != null) restartTriggerObserver.stopWatching();
+        if (debugStatsOverlay != null) debugStatsOverlay.stopMonitoring();
         super.onDestroy();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        savePlaytimeData();
-        handler.removeCallbacks(savePlaytimeRunnable);
+        if (!winecfgOverlayMode && handler != null && savePlaytimeRunnable != null) {
+            savePlaytimeData();
+            handler.removeCallbacks(savePlaytimeRunnable);
+        }
 
 
 
@@ -946,9 +1422,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 drawerLayout.closeDrawers();
                 break;
             case R.id.main_menu_toggle_fullscreen:
-                renderer.toggleFullscreen();
                 drawerLayout.closeDrawers();
-                touchpadView.toggleFullscreen();
+                showFullscreenScaleDialog();
                 break;
             case R.id.main_menu_pip_mode:
                 enterPictureInPictureMode();
@@ -956,6 +1431,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 break;
             case R.id.main_menu_task_manager:
                 new TaskManagerDialog(this).show();
+                drawerLayout.closeDrawers();
+                break;
+            case R.id.main_menu_limit_fps:
+                new LimitFpsDialog(this).show();
                 drawerLayout.closeDrawers();
                 break;
             case R.id.main_menu_magnifier:
@@ -1130,12 +1609,15 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         String appVersion = String.valueOf(AppUtils.getVersionCode(this));
         String imgVersion = String.valueOf(imageFs.getVersion());
         boolean containerDataChanged = false;
+        appendStartupStep("Checking container metadata (appVersion/imgVersion)");
 
         if (!container.getExtra("appVersion").equals(appVersion) || !container.getExtra("imgVersion").equals(imgVersion)) {
+            appendStartupStep("Applying general patches to container");
             applyGeneralPatches(container);
             container.putExtra("appVersion", appVersion);
             container.putExtra("imgVersion", imgVersion);
             containerDataChanged = true;
+            appendStartupStep("Updated container appVersion/imgVersion");
         }
 
         String dxwrapper = this.dxwrapper;
@@ -1145,6 +1627,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             dxwrapper = "vkd3d-"+dxwrapperConfig.get("vkd3dVersion");
 
         if (!dxwrapper.equals(container.getExtra("dxwrapper"))) {
+            appendStartupStep("Updating DX wrapper: " + dxwrapper);
             extractDXWrapperFiles(dxwrapper);
             container.putExtra("dxwrapper", dxwrapper);
             containerDataChanged = true;
@@ -1153,6 +1636,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         String ddrawrapper = this.ddrawrapper;
 
         if (!ddrawrapper.equals(container.getExtra("ddrawrapper"))) {
+            appendStartupStep("Updating DDraw wrapper: " + ddrawrapper);
             extractDDrawrapperFiles(ddrawrapper);
             container.putExtra("ddrawrapper", ddrawrapper);
             containerDataChanged = true;
@@ -1162,6 +1646,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         String wincomponents = shortcut != null ? shortcut.getExtra("wincomponents", container.getWinComponents()) : container.getWinComponents();
         if (!wincomponents.equals(container.getExtra("wincomponents"))) {
+            appendStartupStep("Updating WinComponents configuration");
             extractWinComponentFiles();
             container.putExtra("wincomponents", wincomponents);
             containerDataChanged = true;
@@ -1169,22 +1654,29 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         String desktopTheme = container.getDesktopTheme();
         if (!(desktopTheme+","+xServer.screenInfo).equals(container.getExtra("desktopTheme"))) {
+            appendStartupStep("Applying Wine desktop theme: " + desktopTheme);
             WineThemeManager.apply(this, new WineThemeManager.ThemeInfo(desktopTheme), xServer.screenInfo);
             container.putExtra("desktopTheme", desktopTheme+","+xServer.screenInfo);
             containerDataChanged = true;
         }
 
+        appendStartupStep("Generating Wine start menu entries");
         WineStartMenuCreator.create(this, container);
+        appendStartupStep("Refreshing dosdevices symlinks");
         WineUtils.createDosdevicesSymlinks(container);
 
         String startupSelection = String.valueOf(container.getStartupSelection());
         if (!startupSelection.equals(container.getExtra("startupSelection"))) {
+            appendStartupStep("Applying startup service policy: " + startupSelection);
             WineUtils.changeServicesStatus(container, container.getStartupSelection() != Container.STARTUP_SELECTION_NORMAL);
             container.putExtra("startupSelection", startupSelection);
             containerDataChanged = true;
         }
 
-        if (containerDataChanged) container.saveData();
+        if (containerDataChanged) {
+            appendStartupStep("Saving container metadata changes");
+            container.saveData();
+        }
     }
 
     private void setupXEnvironment() throws PackageManager.NameNotFoundException {
@@ -1210,6 +1702,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         envVars.put("MESA_NO_ERROR", "1");
         envVars.put("WINEPREFIX", imageFs.wineprefix);
         Log.d("Winetricks", "WINEPREFIX: " + imageFs.wineprefix);
+        appendStartupStep("Environment: WINEPREFIX=" + imageFs.wineprefix);
 
         boolean enableWineDebug = preferences.getBoolean("enable_wine_debug", false);
         String wineDebugChannels = preferences.getString("wine_debug_channels", SettingsFragment.DEFAULT_WINE_DEBUG_CHANNELS);
@@ -1221,6 +1714,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         // Clear any temporary directory
         String rootPath = imageFs.getRootDir().getPath();
         FileUtils.clear(imageFs.getTmpDir());
+        appendStartupStep("Cleared temporary directory: " + imageFs.getTmpDir().getPath());
 
 
         // Create the appropriate launcher based on the container type
@@ -1231,6 +1725,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 contentsManager.getProfileByEntryName(container.getWineVersion()),
                 shortcut
         );
+        appendStartupStep("Using launcher: BionicProgramLauncherComponent");
         guestProgramLauncherComponent = bionicLauncher;
         glibcLauncher = null; // We're not using glibc in this case
 
@@ -1247,6 +1742,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             // (Alternatively: "wine wineboot -u" or anything else you want)
 
             Log.d("Winetricks", "Guest executable: " + guestExecutable);
+            appendStartupStep("Guest command: " + guestExecutable);
+            if (wineInfo.isArm64EC()) {
+                appendStartupStep("Binary launch mode: native wine (ARM64EC)");
+            } else {
+                appendStartupStep("Binary launch mode: box64 -> wine");
+            }
 
             // Set up the guest program parameters
             guestProgramLauncherComponent.setWoW64Mode(wow64Mode);
@@ -1300,24 +1801,26 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         );
 
 
-        environment.addComponent(new NetworkInfoUpdateComponent());
+        if (!isWinecfgFastStartupMode()) {
+            environment.addComponent(new NetworkInfoUpdateComponent());
 
-        // Audio driver logic
-        if (audioDriver.equals("alsa")) {
-            envVars.put("ANDROID_ALSA_SERVER", rootPath + UnixSocketConfig.ALSA_SERVER_PATH);
-            envVars.put("ANDROID_ASERVER_USE_SHM", "true");
-            environment.addComponent(
-                    new ALSAServerComponent(
-                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.ALSA_SERVER_PATH)
-                    )
-            );
-        } else if (audioDriver.equals("pulseaudio")) {
-            envVars.put("PULSE_SERVER", rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
-            environment.addComponent(
-                    new PulseAudioComponent(
-                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH)
-                    )
-            );
+            // Audio driver logic
+            if (audioDriver.equals("alsa")) {
+                envVars.put("ANDROID_ALSA_SERVER", rootPath + UnixSocketConfig.ALSA_SERVER_PATH);
+                envVars.put("ANDROID_ASERVER_USE_SHM", "true");
+                environment.addComponent(
+                        new ALSAServerComponent(
+                                UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.ALSA_SERVER_PATH)
+                        )
+                );
+            } else if (audioDriver.equals("pulseaudio")) {
+                envVars.put("PULSE_SERVER", rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
+                environment.addComponent(
+                        new PulseAudioComponent(
+                                UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH)
+                        )
+                );
+            }
         }
 
         // RC (box86_64rc) file handling
@@ -1348,18 +1851,23 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         // Generate fexcore per app settings
-        FEXCoreManager.createAppConfigFiles(this);
+        if (!isWinecfgFastStartupMode()) {
+            FEXCoreManager.createAppConfigFiles(this);
+        }
 
         // Start all environment components (XServer, Audio, etc.)
         environment.startEnvironmentComponents();
+        appendStartupStep("Environment components started");
 
         // (Optionally) run Winetricks after setup, if you wish
         // runWinetricksAfterSetup();
 
         // Start the WinHandler
         winHandler.start();
+        appendStartupStep("WinHandler started");
 
         if (wineRequestHandler != null) wineRequestHandler.start();
+        if (wineRequestHandler != null) appendStartupStep("Wine request bridge started");
 
         // Clear envVars if needed
         // envVars.clear();
@@ -1782,25 +2290,78 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     private void setupUI() {
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
+        if (winecfgOverlayMode) {
+            rootView.setBackgroundColor(0x00000000);
+        }
         xServerView = new XServerView(this, xServer);
+        if (winecfgOverlayMode) {
+            xServerView.setZOrderOnTop(true);
+            xServerView.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+        }
         final GLRenderer renderer = xServerView.getRenderer();
         renderer.setCursorVisible(false);
 
         if (shortcut != null) {
             if (shortcut.getExtra("forceFullscreen", "0").equals("1")) renderer.setForceFullscreenWMClass(shortcut.wmClass);
             renderer.setUnviewableWMClasses("explorer.exe");
+        } else if (winecfgOverlayMode) {
+            // Hide helper/desktop windows and scale target window to the overlay area.
+            String execPath = getIntent().getStringExtra("exec_path");
+            String execName = (execPath != null && !execPath.isEmpty()) ? FileUtils.getName(execPath) : "winecfg.exe";
+            renderer.setForceFullscreenWMClass(execName);
+            renderer.setUnviewableWMClasses("explorer.exe");
         }
 
         xServer.setRenderer(renderer);
         rootView.addView(xServerView);
+        if (winecfgOverlayMode) {
+            xServerView.setVisibility(View.INVISIBLE);
+            // Match surface to 420:460 and center it, so bars are outside the surface
+            // and remain transparent (container settings visible behind).
+            rootView.post(() -> {
+                int parentW = rootView.getWidth();
+                int parentH = rootView.getHeight();
+                if (parentW <= 0 || parentH <= 0) return;
+
+                float targetAspect = 420f / 460f;
+                int surfaceW = parentW;
+                int surfaceH = Math.round(surfaceW / targetAspect);
+                if (surfaceH > parentH) {
+                    surfaceH = parentH;
+                    surfaceW = Math.round(surfaceH * targetAspect);
+                }
+
+                FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) xServerView.getLayoutParams();
+                lp.width = surfaceW;
+                lp.height = surfaceH;
+                lp.gravity = Gravity.CENTER;
+                xServerView.setLayoutParams(lp);
+
+                if (touchpadView != null) {
+                    FrameLayout.LayoutParams touchLp = (FrameLayout.LayoutParams) touchpadView.getLayoutParams();
+                    touchLp.width = surfaceW;
+                    touchLp.height = surfaceH;
+                    touchLp.gravity = Gravity.CENTER;
+                    touchpadView.setLayoutParams(touchLp);
+                }
+            });
+        }
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
         touchpadView = new TouchpadView(this, xServer, timeoutHandler, hideControlsRunnable);
         touchpadView.setSensitivity(globalCursorSpeed);
-        touchpadView.setFourFingersTapCallback(() -> {
-            if (!drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.openDrawer(GravityCompat.START);
-        });
+        if (!winecfgOverlayMode) {
+            touchpadView.setFourFingersTapCallback(() -> {
+                if (!drawerLayout.isDrawerOpen(GravityCompat.START)) drawerLayout.openDrawer(GravityCompat.START);
+            });
+        }
         rootView.addView(touchpadView);
+        if (winecfgOverlayMode) {
+            // In winecfg overlay mode touch becomes direct left-click at the touched position.
+            View.OnTouchListener overlayDirectTouchListener = (v, event) -> handleOverlayDirectTouch(event);
+            xServerView.setOnTouchListener(overlayDirectTouchListener);
+            touchpadView.setOnTouchListener(overlayDirectTouchListener);
+        }
 
         inputControlsView = new InputControlsView(this, timeoutHandler, hideControlsRunnable);
         inputControlsView.setOverlayOpacity(preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY));
@@ -1809,6 +2370,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         inputControlsView.setVisibility(View.GONE);
         rootView.addView(inputControlsView);
 
+        if (winecfgOverlayMode) {
+            xServer.setRelativeMouseMovement(false);
+            xServer.setForceMouseControl(false);
+            touchpadView.setVisibility(View.INVISIBLE);
+            inputControlsView.setVisibility(View.GONE);
+            drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
+            setupQuickHud(rootView, true);
+            startOverlayWinecfgWatcher();
+            AppUtils.observeSoftKeyboardVisibility(drawerLayout, renderer::setScreenOffsetYRelativeToCursor);
+            return;
+        }
 
         startTouchscreenTimeout();
 
@@ -1823,6 +2395,15 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             frameRating.setVisibility(View.GONE);
             rootView.addView(frameRating);
         }
+
+        if (container != null && container.isDebugOverlay()) {
+            debugStatsOverlay = new DebugStatsOverlay(this);
+            debugStatsOverlay.setVisibility(View.VISIBLE);
+            rootView.addView(debugStatsOverlay);
+            debugStatsOverlay.startMonitoring();
+        }
+
+        setupQuickHud(rootView, false);
 
         // Get the fullscreen stretched extra from the shortcut if available
         String shortcutFullscreenStretched = shortcut != null ? shortcut.getExtra("fullscreenStretched") : null;
@@ -1857,8 +2438,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         AppUtils.observeSoftKeyboardVisibility(drawerLayout, renderer::setScreenOffsetYRelativeToCursor);
     }
-
-
 
     private ActivityResultLauncher<Intent> controlsEitorActivityResultLauncher = registerForActivityResult(
             new ActivityResultContracts.StartActivityForResult(),
@@ -2000,7 +2579,107 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         dialog.show();
     }
 
+    private void showFullscreenScaleDialog() {
+        final GLRenderer renderer = xServerView.getRenderer();
+        final ContentDialog dialog = new ContentDialog(this, R.layout.fullscreen_stretch_dialog);
+        dialog.setTitle("Fullscreen Scale");
+        dialog.setIcon(R.drawable.icon_fullscreen);
+
+        // Hide default OK/Cancel buttons since we have our own Close button
+        dialog.findViewById(R.id.BTConfirm).setVisibility(View.GONE);
+        dialog.findViewById(R.id.BTCancel).setVisibility(View.GONE);
+
+        final TextView tvValue = dialog.findViewById(R.id.TVStretchValue);
+        final SeekBar seekBar = dialog.findViewById(R.id.SBStretch);
+        final Button bt0 = dialog.findViewById(R.id.BTStretch0);
+        final Button bt50 = dialog.findViewById(R.id.BTStretch50);
+        final Button bt100 = dialog.findViewById(R.id.BTStretch100);
+        final Button btClose = dialog.findViewById(R.id.BTStretchClose);
+
+        // Initialize with current scale
+        int currentScale = renderer.getFullscreenScale();
+        seekBar.setProgress(currentScale);
+        tvValue.setText(String.valueOf(currentScale));
+
+        // If not in fullscreen mode, enable it first
+        if (!renderer.isFullscreen()) {
+            renderer.toggleFullscreen();
+            touchpadView.toggleFullscreen();
+        }
+
+        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                tvValue.setText(String.valueOf(progress));
+                renderer.setFullscreenScale(progress);
+                touchpadView.updateFullscreenTransform();
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+        bt0.setOnClickListener(v -> {
+            seekBar.setProgress(0);
+            tvValue.setText("0");
+            renderer.setFullscreenScale(0);
+            touchpadView.updateFullscreenTransform();
+        });
+
+        bt50.setOnClickListener(v -> {
+            seekBar.setProgress(50);
+            tvValue.setText("50");
+            renderer.setFullscreenScale(50);
+            touchpadView.updateFullscreenTransform();
+        });
+
+        bt100.setOnClickListener(v -> {
+            seekBar.setProgress(100);
+            tvValue.setText("100");
+            renderer.setFullscreenScale(100);
+            touchpadView.updateFullscreenTransform();
+        });
+
+        btClose.setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+
+    private void showInputControlsFPS() {
+        ControlsProfile fpsProfile = findControlsProfileByName("FPS");
+        if (fpsProfile != null) {
+            ControlsProfile currentProfile = inputControlsView.getProfile();
+            if (currentProfile != null && currentProfile.id == fpsProfile.id &&
+                    inputControlsView.getVisibility() == View.VISIBLE) {
+                hideInputControls();
+                return;
+            }
+            showInputControls(fpsProfile);
+            return;
+        }
+
+        showInputControlsDialog();
+    }
+
+    @Nullable
+    private ControlsProfile findControlsProfileByName(String profileName) {
+        ArrayList<ControlsProfile> profiles = inputControlsManager.getProfiles(true);
+        for (ControlsProfile profile : profiles) {
+            if (profile != null && profileName.equalsIgnoreCase(profile.getName())) {
+                return profile;
+            }
+        }
+        return null;
+    }
+
     private void simulateConfirmInputControlsDialog() {
+        if (winecfgOverlayMode) {
+            return;
+        }
+
         // Simulate setting the relative mouse movement and touchscreen controls from preferences
         boolean isRelativeMouseMovement = preferences.getBoolean("relative_mouse_movement_enabled", false);
         boolean isForceMouseControl = preferences.getBoolean("force_mouse_control_enabled", false);
@@ -2081,6 +2760,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void showInputControls(ControlsProfile profile) {
+        boolean wasVisible = inputControlsView.getVisibility() == View.VISIBLE;
         inputControlsView.setVisibility(View.VISIBLE);
         inputControlsView.requestFocus();
         inputControlsView.setProfile(profile);
@@ -2088,7 +2768,28 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         touchpadView.setSensitivity(profile.getCursorSpeed() * globalCursorSpeed);
         touchpadView.setPointerButtonRightEnabled(false);
 
+        if (!wasVisible) {
+            playInputControlsImpactAnimation();
+        }
         inputControlsView.invalidate();
+    }
+
+    private void playInputControlsImpactAnimation() {
+        float startOffsetY = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                120f,
+                getResources().getDisplayMetrics()
+        );
+
+        inputControlsView.animate().cancel();
+        inputControlsView.setTranslationY(startOffsetY);
+        inputControlsView.setAlpha(0.9f);
+        inputControlsView.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(430)
+                .setInterpolator(new OvershootInterpolator(1.25f))
+                .start();
     }
 
     private void hideInputControls() {
@@ -2175,7 +2876,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (firstTimeBoot) {
             Log.d("XServerDisplayActivity", "First time container boot, re-extracting wrapper");
+            appendStartupStep("Extract archive: graphics_driver/wrapper.tzst");
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
+            appendStartupStep("Extract archive: graphics_driver/zink_libs.tzst");
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_libs" + ".tzst", rootDir);
         }
 
@@ -2187,8 +2890,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
+            appendStartupStep("Editing registry file: " + userRegFile.getPath());
             String videoMemorySize = registryEditor.getStringValue("Software\\Wine\\Direct3D", "VideoMemorySize", String.valueOf(GPUInformation.getMemorySize()));
             envVars.put("UTIL_LAYER_VMEM_MAX_SIZE", videoMemorySize);
+            appendStartupStep("Read registry VideoMemorySize=" + videoMemorySize);
         }
     }
 
@@ -2381,14 +3086,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         File windowsDir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows");
 
         if (dxwrapper.contains("vkd3d")) {
+            appendStartupStep("Extract archive: dxwrapper/dxvk-2.4.1.tzst");
             ContentProfile profile = contentsManager.getProfileByEntryName(dxwrapper);
             Log.d(TAG, "Extracting DXVK 2.4.1");
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/dxvk-2.4.1" + ".tzst", windowsDir, onExtractFileListener);
             if (profile != null) {
                 Log.d(TAG, "Applying user-defined VKD3D content profile: " + dxwrapper);
+                appendStartupStep("Apply content profile: " + dxwrapper);
                 contentsManager.applyContent(profile);
             } else {
                 Log.d(TAG, "Extracting fallback VKD3D .tzst archive: " + dxwrapper);
+                appendStartupStep("Extract archive: dxwrapper/" + dxwrapper + ".tzst");
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + dxwrapper + ".tzst", windowsDir, onExtractFileListener);
             }
             Log.d(TAG, "Finished VKD3D extraction for " + dxwrapper);
@@ -2398,18 +3106,22 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             ContentProfile profile = contentsManager.getProfileByEntryName(dxwrapper);
             if (profile != null) {
                 Log.d(TAG, "Applying user-defined DXVK content profile: " + dxwrapper);
+                appendStartupStep("Apply content profile: " + dxwrapper);
                 contentsManager.applyContent(profile);
             } else {
                 Log.d(TAG, "Extracting fallback DXVK .tzst archive: " + dxwrapper);
+                appendStartupStep("Extract archive: dxwrapper/" + dxwrapper + ".tzst");
                 TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + dxwrapper + ".tzst", windowsDir, onExtractFileListener);
 
                 if (compareVersion(StringUtils.parseNumber(dxwrapper), "2.4") < 0) {
                     Log.d(TAG, "Extracting d8vk as part of DXVK version " + dxwrapper);
+                    appendStartupStep("Extract archive: dxwrapper/d8vk-" + DefaultVersion.D8VK + ".tzst");
                     TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/d8vk-" + DefaultVersion.D8VK + ".tzst", windowsDir, onExtractFileListener);
                 }
             }
         } else if (dxwrapper.contains("wined3d")) {
             Log.d(TAG, "Restoring original DLL files for wined3d.");
+            appendStartupStep("Restore WineD3D original DLLs");
             restoreOriginalDllFiles(dlls);
         }
     }
@@ -2423,6 +3135,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         Log.d("XServerDisplayActivity", "Deleting glide dlls before extraction");
         for (String glideDLL : glideDlls) {
+            appendStartupStep("Delete file: " + windowsDir + "/syswow64/" + glideDLL);
             FileUtils.delete(new File(windowsDir + "/syswow64/" + glideDLL));
         }
 
@@ -2432,11 +3145,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
         else {
             Log.d("XServerDisplayActivity", "Extracting ddrawrapper " + ddrawrapper);
+            appendStartupStep("Extract archive: ddrawrapper/" + ddrawrapper + ".tzst");
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/" + ddrawrapper + ".tzst", windowsDir, onExtractFileListener);
         }
 
         if (!dxwrapper.contains("dgvoodoo"))  {
             Log.d("XServerDisplayActivity", "Extracting nglide wrapper");
+            appendStartupStep("Extract archive: ddrawrapper/nglide.tzst");
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/nglide.tzst", windowsDir, onExtractFileListener);
         }
     }
@@ -2495,6 +3210,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                     continue;
 
                 if (useNative) {
+                    appendStartupStep("Extract archive: wincomponents/" + identifier + ".tzst");
                     TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "wincomponents/"+identifier+".tzst", windowsDir, onExtractFileListener);
                 }
                 else {
@@ -2505,6 +3221,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                     }
                 }
                 Log.d("XServerDisplayActivity", "Setting wincomponent " + identifier + " to " + String.valueOf(useNative));
+                appendStartupStep("Set wincomponent " + identifier + " native=" + useNative);
                 WineUtils.overrideWinComponentDlls(this, container, identifier, useNative);
                 WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, useNative, this);
             }
@@ -2592,6 +3309,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         // Define default arguments
         String args = "";
+        String execPathFromIntent = getIntent().getStringExtra("exec_path");
 
         if (shortcut != null) {
             String execArgs = shortcut.getExtra("execArgs");
@@ -2613,6 +3331,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
                 args += "/dir " + StringUtils.escapeDOSPath(exeDir) + " \"" + filename + "\"" + execArgs;
             }
+        } else if (execPathFromIntent != null && !execPathFromIntent.isEmpty()) {
+            String exeDir = FileUtils.getDirname(execPathFromIntent);
+            String filename = FileUtils.getName(execPathFromIntent);
+            args += "/dir " + StringUtils.escapeDOSPath(exeDir) + " \"" + filename + "\"";
         } else {
             // Append EXTRA_EXEC_ARGS from overrideEnvVars if it exists
             if (envVars.has("EXTRA_EXEC_ARGS")) {
@@ -2659,6 +3381,38 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         return container;
     }
 
+    public void setGameFpsLimit(int fps) {
+        if (xServer != null) {
+            xServer.setPresentFpsLimit(fps);
+        }
+    }
+
+    public void setFrameGenEnabled(boolean enabled) {
+        if (xServer != null) {
+            xServer.setFrameGenEnabled(enabled);
+        }
+    }
+
+    public void setDxvkFrameRateLimit(int fps) {
+        int value = Math.max(0, fps);
+        if (bionicLauncher == null) return;
+
+        EnvVars launcherEnv = bionicLauncher.getEnvVars();
+        if (launcherEnv == null) return;
+
+        if (value == 0) {
+            launcherEnv.remove("DXVK_FRAME_RATE");
+        } else {
+            launcherEnv.put("DXVK_FRAME_RATE", String.valueOf(value));
+        }
+    }
+
+    public void restartWineServer() {
+        if (bionicLauncher != null) {
+            bionicLauncher.restartWineServer();
+        }
+    }
+
     public void setDXWrapper(String dxwrapper) {
         this.dxwrapper = dxwrapper;
     }
@@ -2674,26 +3428,34 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         if (!audioDriver.equals(container.getExtra("audioDriver"))) {
             File rootDir = imageFs.getRootDir();
             File userRegFile = new File(rootDir, ImageFs.WINEPREFIX+"/user.reg");
+            appendStartupStep("Editing registry file: " + userRegFile.getPath());
             try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
                 if (audioDriver.equals("alsa")) {
+                    appendStartupStep("Set registry Audio=alsa");
                     registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa");
                 }
                 else if (audioDriver.equals("pulseaudio")) {
+                    appendStartupStep("Set registry Audio=pulse");
                     registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse");
                 }
             }
             container.putExtra("audioDriver", audioDriver);
             container.saveData();
+            appendStartupStep("Saved container audio driver: " + audioDriver);
         }
     }
 
     private void applyGeneralPatches(Container container) {
         File rootDir = imageFs.getRootDir();
+        appendStartupStep("Extract archive: container_pattern_common.tzst");
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "container_pattern_common.tzst", rootDir);
+        appendStartupStep("Extract archive: pulseaudio.tzst");
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "pulseaudio.tzst", new File(getFilesDir(), "pulseaudio"));
+        appendStartupStep("Applying Wine system tweaks");
         WineUtils.applySystemTweaks(this, wineInfo);
         container.putExtra("graphicsDriver", null);
         container.putExtra("desktopTheme", null);
+        appendStartupStep("Reset container graphics/theme cache flags");
     }
 
 //    private void assignTaskAffinity(Window window) {
@@ -2717,20 +3479,22 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             if (frameRatingWindowId == -1 && (property.nameAsString().contains("_UTIL_LAYER") || property.nameAsString().contains("_MESA_DRV"))) {
                 frameRatingWindowId = window.id;
                 Log.d("XServerDisplayActivity", "Showing hud for Window " + window.getName());
-                frameRating.update();
+                if (frameRating != null) frameRating.update();
             }
             if (property.nameAsString().contains("_UTIL_LAYER_ENGINE_NAME")) {
-                frameRating.setRenderer(property.toString());
+                if (frameRating != null) frameRating.setRenderer(property.toString());
             }
             if (property.nameAsString().contains("_UTIL_LAYER_GPU_NAME")) {
-                frameRating.setGpuName(property.toString());
+                if (frameRating != null) frameRating.setGpuName(property.toString());
             }
         }
         else if (frameRatingWindowId != -1) {
             frameRatingWindowId = -1;
             Log.d("XServerDisplayActivity", "Hiding hud for Window " + window.getName());
-            runOnUiThread(() -> frameRating.setVisibility(View.GONE));
-            frameRating.reset();
+            runOnUiThread(() -> {
+                if (frameRating != null) frameRating.setVisibility(View.GONE);
+            });
+            if (frameRating != null) frameRating.reset();
         }
     }
 

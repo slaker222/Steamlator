@@ -14,7 +14,12 @@ import com.winlator.cmod.xserver.extensions.SyncExtension;
 
 import java.nio.charset.Charset;
 import java.util.EnumMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.LockSupport;
 
 public class XServer {
     public enum Lockable {WINDOW_MANAGER, PIXMAP_MANAGER, DRAWABLE_MANAGER, GRAPHIC_CONTEXT_MANAGER, INPUT_DEVICE, CURSOR_MANAGER, SHMSEGMENT_MANAGER}
@@ -45,6 +50,16 @@ public class XServer {
     private boolean isGrabbed = false;
     private XClient grabbingClient = null;
 
+    // Frame limiter applied at X11 Present stage.
+    // This throttles clients that present frames (e.g. DXVK) rather than the Android UI refresh.
+    private volatile int presentFpsLimit = 0; // 0 = unlimited
+    private long nextPresentDeadlineNs = 0L;
+
+    // "Frame Gen": we render a duplicate intermediate frame between real presents.
+    // This improves perceived smoothness without needing motion vectors/interpolation.
+    private volatile boolean frameGenEnabled = false;
+    private ScheduledExecutorService frameGenScheduler;
+
     public XServer(ScreenInfo screenInfo) {
         this.screenInfo = screenInfo;
         cursorLocker = new CursorLocker(this);
@@ -60,6 +75,92 @@ public class XServer {
 
         DesktopHelper.attachTo(this);
         setupExtensions();
+    }
+
+    public int getPresentFpsLimit() {
+        return presentFpsLimit;
+    }
+
+    public void setPresentFpsLimit(int fps) {
+        this.presentFpsLimit = Math.max(0, fps);
+        this.nextPresentDeadlineNs = 0L;
+    }
+
+    public boolean isFrameGenEnabled() {
+        return frameGenEnabled;
+    }
+
+    public void setFrameGenEnabled(boolean enabled) {
+        this.frameGenEnabled = enabled;
+        if (!enabled) {
+            // Avoid leaking the scheduler thread when feature is turned off or activity exits.
+            ScheduledExecutorService scheduler = frameGenScheduler;
+            frameGenScheduler = null;
+            if (scheduler != null) {
+                scheduler.shutdownNow();
+            }
+        }
+    }
+
+    public void scheduleGeneratedFrameIfNeeded() {
+        if (!frameGenEnabled) return;
+        final int limit = presentFpsLimit;
+        if (limit <= 0) return;
+        if (renderer == null || renderer.xServerView == null) return;
+
+        if (frameGenScheduler == null) {
+            synchronized (this) {
+                if (frameGenScheduler == null) {
+                    frameGenScheduler = Executors.newSingleThreadScheduledExecutor(new ThreadFactory() {
+                        @Override
+                        public Thread newThread(Runnable r) {
+                            Thread t = new Thread(r, "framegen");
+                            t.setDaemon(true);
+                            return t;
+                        }
+                    });
+                }
+            }
+        }
+
+        long delayNs = (1_000_000_000L / limit) / 2L;
+        frameGenScheduler.schedule(() -> renderer.xServerView.requestRender(), delayNs, TimeUnit.NANOSECONDS);
+    }
+
+    public void pacePresentIfNeeded() {
+        final int limit = presentFpsLimit;
+        if (limit <= 0) {
+            nextPresentDeadlineNs = 0L;
+            return;
+        }
+
+        final long frameNs = 1_000_000_000L / limit;
+        final long nowNs = System.nanoTime();
+
+        // Use a stable timeline: nextDeadline += frameNs (avoids jitter/drift vs using "now" each time).
+        if (nextPresentDeadlineNs == 0L) {
+            nextPresentDeadlineNs = nowNs + frameNs;
+            return;
+        }
+
+        long remainingNs = nextPresentDeadlineNs - nowNs;
+        if (remainingNs <= 0L) {
+            // We're late; move deadline forward but don't "fast-forward" too much.
+            nextPresentDeadlineNs = nowNs + frameNs;
+            return;
+        }
+
+        // Sleep most of the remaining time with parkNanos (finer than Thread.sleep),
+        // then spin/yield for the last ~0.5ms for smoother pacing.
+        final long spinThresholdNs = 500_000L;
+        if (remainingNs > spinThresholdNs) {
+            LockSupport.parkNanos(remainingNs - spinThresholdNs);
+        }
+        while ((remainingNs = nextPresentDeadlineNs - System.nanoTime()) > 0L) {
+            Thread.yield();
+        }
+
+        nextPresentDeadlineNs += frameNs;
     }
 
     public boolean isRelativeMouseMovement() {

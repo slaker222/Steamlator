@@ -37,6 +37,10 @@
             android:id="@+id/main_menu_task_manager"
             android:title="@string/task_manager" />
         <item
+            android:icon="@drawable/icon_settings"
+            android:id="@+id/main_menu_limit_fps"
+            android:title="@string/limit_fps" />
+        <item
             android:icon="@drawable/icon_magnifier"
             android:id="@+id/main_menu_magnifier"
             android:title="@string/magnifier" />

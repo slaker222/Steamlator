@@ -125,6 +125,9 @@ public class PresentExtension implements Extension {
         Drawable content = window.getContent();
         if (content.visual.depth != pixmap.drawable.visual.depth) throw new BadMatch();
 
+        // Throttle presents to limit actual game FPS.
+        client.xServer.pacePresentIfNeeded();
+
         long ust = System.nanoTime() / 1000;
         long msc = ust / FAKE_INTERVAL;
 
@@ -133,6 +136,9 @@ public class PresentExtension implements Extension {
             sendIdleNotify(window, pixmap, serial, idleFence);
             sendCompleteNotify(window, serial, Kind.PIXMAP, Mode.COPY, ust, msc);
         }
+
+        // Optionally render a duplicate intermediate frame for smoother pacing.
+        client.xServer.scheduleGeneratedFrameIfNeeded();
     }
 
     private void selectInput(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
