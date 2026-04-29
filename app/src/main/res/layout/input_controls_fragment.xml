@@ -10,9 +10,38 @@
         android:layout_height="match_parent"
         android:padding="16dp">
 
+        <LinearLayout
+            android:id="@+id/LLInputControlTabs"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/BTSensorTab"
+                style="@style/ButtonNeutral"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:drawableStart="@drawable/touchpad_sensor"
+                android:drawablePadding="8dp"
+                android:text="Sensor" />
+
+            <Button
+                android:id="@+id/BTGamepadTab"
+                style="@style/ButtonNeutral"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:drawableStart="@drawable/icon_gamepad"
+                android:drawablePadding="8dp"
+                android:text="Gamepad" />
+        </LinearLayout>
+
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
             android:text="@string/profile" />
 
         <LinearLayout
@@ -52,6 +81,12 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/LLSensorContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
@@ -160,5 +195,38 @@
             android:gravity="center"
             android:text="@string/no_items_to_display"
             android:visibility="gone" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/LLGamepadContent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="8dp"
+                android:text="Move sticks and press gamepad buttons to see live input." />
+
+            <com.winlator.cmod.widget.GamepadVisualizerView
+                android:id="@+id/GamepadVisualizer"
+                android:layout_width="match_parent"
+                android:layout_height="260dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true" />
+
+            <Button
+                android:id="@+id/BTControllerManager"
+                style="@style/ButtonPositive"
+                android:layout_width="240dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="12dp"
+                android:text="@string/controller_manager" />
+        </LinearLayout>
     </LinearLayout>
 </ScrollView>

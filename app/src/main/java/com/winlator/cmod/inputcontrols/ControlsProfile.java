@@ -214,8 +214,17 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 element.setScale((float)elementJSONObject.getDouble("scale"));
                 element.setText(elementJSONObject.getString("text"));
                 element.setIconId(elementJSONObject.getInt("iconId"));
+                if (elementJSONObject.has("customIconPath")) {
+                    element.setCustomIconPath(elementJSONObject.getString("customIconPath"));
+                }
                 if (elementJSONObject.has("range")) element.setRange(ControlElement.Range.valueOf(elementJSONObject.getString("range")));
                 if (elementJSONObject.has("orientation")) element.setOrientation((byte)elementJSONObject.getInt("orientation"));
+                if (elementJSONObject.has("swipePadTexts")) {
+                    JSONArray textsArray = elementJSONObject.getJSONArray("swipePadTexts");
+                    String[] texts = new String[5];
+                    for (int k = 0; k < Math.min(textsArray.length(), 5); k++) texts[k] = textsArray.getString(k);
+                    element.setSwipePadTexts(texts);
+                }
 
                 boolean hasGamepadBinding = true;
                 JSONArray bindingsJSONArray = elementJSONObject.getJSONArray("bindings");

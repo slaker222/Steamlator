@@ -19,6 +19,8 @@ import android.os.Handler;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
+import android.util.SparseArray;
+import android.util.SparseBooleanArray;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.PointerIcon;
@@ -43,6 +45,8 @@ import com.winlator.cmod.xserver.XServer;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -64,7 +68,9 @@ public class InputControlsView extends View {
     private float overlayOpacity = DEFAULT_OVERLAY_OPACITY;
     private TouchpadView touchpadView;
     private XServer xServer;
-    private final Bitmap[] icons = new Bitmap[17];
+    private final SparseArray<Bitmap> icons = new SparseArray<>();
+    private final SparseBooleanArray iconTintModes = new SparseBooleanArray();
+    private final SparseBooleanArray iconTintModeLoaded = new SparseBooleanArray();
     private Timer mouseMoveTimer;
     private final PointF mouseMoveOffset = new PointF();
     private boolean showTouchscreenControls = true;
@@ -141,8 +147,16 @@ public class InputControlsView extends View {
         this.editMode = editMode;
     }
 
+    public boolean isEditMode() {
+        return editMode;
+    }
+
     public void setOverlayOpacity(float overlayOpacity) {
         this.overlayOpacity = overlayOpacity;
+    }
+
+    public float getOverlayOpacity() {
+        return overlayOpacity;
     }
 
     public int getSnappingSize() {
@@ -653,7 +667,9 @@ public class InputControlsView extends View {
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_POINTER_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId)) handled = true;
+                    float upX = event.getX(actionIndex);
+                    float upY = event.getY(actionIndex);
+                    for (ControlElement element : profile.getElements()) if (element.handleTouchUp(pointerId, upX, upY)) handled = true;
                     if (!handled) touchpadView.onTouchEvent(event);
                     break;
             }
@@ -774,13 +790,43 @@ public class InputControlsView extends View {
     }
 
     public Bitmap getIcon(byte id) {
-        if (icons[id] == null) {
+        int iconId = id & 0xFF;
+        Bitmap icon = icons.get(iconId);
+        if (icon == null) {
             Context context = getContext();
-            try (InputStream is = context.getAssets().open("inputcontrols/icons/"+id+".png")) {
-                icons[id] = BitmapFactory.decodeStream(is);
+            try (InputStream is = context.getAssets().open("inputcontrols/icons/" + iconId + ".png")) {
+                icon = BitmapFactory.decodeStream(is);
             }
             catch (IOException e) {}
+
+            if (icon == null) {
+                File customIconFile = new File(context.getFilesDir(), "inputcontrols/icons/" + iconId + ".png");
+                if (customIconFile.isFile()) {
+                    icon = BitmapFactory.decodeFile(customIconFile.getAbsolutePath());
+                }
+            }
+
+            if (icon != null) icons.put(iconId, icon);
         }
-        return icons[id];
+        return icon;
+    }
+
+    public boolean shouldTintIcon(byte id) {
+        int iconId = id & 0xFF;
+        if (iconTintModeLoaded.get(iconId, false)) return iconTintModes.get(iconId, true);
+
+        boolean shouldTint = true;
+        File metaFile = new File(getContext().getFilesDir(), "inputcontrols/icons/" + iconId + ".meta");
+        if (metaFile.isFile()) {
+            try (InputStream is = new FileInputStream(metaFile)) {
+                int value = is.read();
+                shouldTint = value != '0';
+            }
+            catch (IOException ignored) {}
+        }
+
+        iconTintModes.put(iconId, shouldTint);
+        iconTintModeLoaded.put(iconId, true);
+        return shouldTint;
     }
 }

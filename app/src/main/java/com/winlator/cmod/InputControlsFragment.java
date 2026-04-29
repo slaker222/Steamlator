@@ -8,7 +8,9 @@ import android.content.res.ColorStateList;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.view.InputDevice;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -30,6 +32,7 @@ import androidx.fragment.app.Fragment;
 import androidx.preference.PreferenceManager;
 
 import com.winlator.cmod.R;
+import com.winlator.cmod.contentdialog.ControllerAssignmentDialog;
 import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.Callback;
 import com.winlator.cmod.core.FileUtils;
@@ -39,6 +42,7 @@ import com.winlator.cmod.inputcontrols.ExternalController;
 import com.winlator.cmod.inputcontrols.InputControlsManager;
 import com.winlator.cmod.math.Mathf;
 import com.winlator.cmod.contentdialog.ContentDialog;
+import com.winlator.cmod.widget.GamepadVisualizerView;
 import com.winlator.cmod.widget.InputControlsView;
 
 import org.json.JSONException;
@@ -69,7 +73,7 @@ public class InputControlsFragment extends Fragment {
         manager = new InputControlsManager(getContext());
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(getContext());
-        isDarkMode = sharedPreferences.getBoolean("dark_mode", false);
+        isDarkMode = sharedPreferences.getBoolean("dark_mode", true);
     }
 
     @Override
@@ -156,6 +160,7 @@ public class InputControlsFragment extends Fragment {
             public void onStopTrackingTouch(SeekBar seekBar) {}
         });
         sbUiOpacity.setProgress((int)(preferences.getFloat("overlay_opacity", InputControlsView.DEFAULT_OVERLAY_OPACITY) * 100));
+        setupInputControlTabs(view);
 
         view.findViewById(R.id.BTAddProfile).setOnClickListener((v) -> ContentDialog.prompt(context, R.string.profile_name, null, (name) -> {
             currentProfile = manager.createProfile(name);
@@ -237,6 +242,67 @@ public class InputControlsFragment extends Fragment {
         });
 
         return view;
+    }
+
+    private void setupInputControlTabs(View view) {
+        View sensorTab = view.findViewById(R.id.BTSensorTab);
+        View gamepadTab = view.findViewById(R.id.BTGamepadTab);
+        View sensorContent = view.findViewById(R.id.LLSensorContent);
+        View gamepadContent = view.findViewById(R.id.LLGamepadContent);
+        GamepadVisualizerView gamepadVisualizer = view.findViewById(R.id.GamepadVisualizer);
+        View controllerManagerButton = view.findViewById(R.id.BTControllerManager);
+
+        Runnable showSensor = () -> {
+            sensorContent.setVisibility(View.VISIBLE);
+            gamepadContent.setVisibility(View.GONE);
+            sensorTab.setAlpha(1.0f);
+            gamepadTab.setAlpha(0.65f);
+        };
+
+        Runnable showGamepad = () -> {
+            sensorContent.setVisibility(View.GONE);
+            gamepadContent.setVisibility(View.VISIBLE);
+            sensorTab.setAlpha(0.65f);
+            gamepadTab.setAlpha(1.0f);
+            gamepadVisualizer.requestFocus();
+        };
+
+        sensorTab.setOnClickListener(v -> showSensor.run());
+        gamepadTab.setOnClickListener(v -> showGamepad.run());
+        controllerManagerButton.setOnClickListener(v -> ControllerAssignmentDialog.show(requireActivity()));
+
+        // Keep current Input Control behavior unchanged on first load.
+        showSensor.run();
+
+        view.setFocusableInTouchMode(true);
+        view.requestFocus();
+
+        view.setOnGenericMotionListener((v, event) -> {
+            if (gamepadContent.getVisibility() != View.VISIBLE) {
+                return false;
+            }
+            if ((event.getSource() & InputDevice.SOURCE_JOYSTICK) != InputDevice.SOURCE_JOYSTICK
+                    || event.getAction() != MotionEvent.ACTION_MOVE) {
+                return false;
+            }
+            return gamepadVisualizer.handleMotionEvent(event);
+        });
+
+        View.OnKeyListener keyListener = (v, keyCode, event) -> {
+            if (gamepadContent.getVisibility() != View.VISIBLE) {
+                return false;
+            }
+            return gamepadVisualizer.handleKeyEvent(event);
+        };
+        view.setOnKeyListener(keyListener);
+        gamepadVisualizer.setOnKeyListener(keyListener);
+
+        gamepadVisualizer.setOnGenericMotionListener((v, event) -> {
+            if (gamepadContent.getVisibility() != View.VISIBLE) {
+                return false;
+            }
+            return gamepadVisualizer.handleMotionEvent(event);
+        });
     }
 
     private void openProfileFile(Spinner sProfile) {

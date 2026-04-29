@@ -118,6 +118,26 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/LLRadialMenuOptions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/bindings" />
+
+            <com.winlator.cmod.widget.NumberPicker
+                android:id="@+id/NPBindings"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:minValue="3"
+                app:maxValue="6" />
+        </LinearLayout>
+
+        <LinearLayout
             android:id="@+id/LLBindings"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -216,6 +236,37 @@
                     android:layout_height="wrap_content"
                     android:orientation="horizontal" />
             </HorizontalScrollView>
+
+            <Button
+                android:id="@+id/BTImportIconImage"
+                style="@style/ButtonNeutral"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/import_image" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/LLSwipePadTexts"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
+            
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Center Text" />
+            <EditText style="@style/EditText" android:id="@+id/ETSwipeCenter" android:layout_width="match_parent" android:maxLength="8" android:inputType="textCapCharacters" />
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Up Text" />
+            <EditText style="@style/EditText" android:id="@+id/ETSwipeUp" android:layout_width="match_parent" android:maxLength="8" android:inputType="textCapCharacters" />
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Right Text" />
+            <EditText style="@style/EditText" android:id="@+id/ETSwipeRight" android:layout_width="match_parent" android:maxLength="8" android:inputType="textCapCharacters" />
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Down Text" />
+            <EditText style="@style/EditText" android:id="@+id/ETSwipeDown" android:layout_width="match_parent" android:maxLength="8" android:inputType="textCapCharacters" />
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Left Text" />
+            <EditText style="@style/EditText" android:id="@+id/ETSwipeLeft" android:layout_width="match_parent" android:maxLength="8" android:inputType="textCapCharacters" />
         </LinearLayout>
     </LinearLayout>
 </ScrollView>

@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.util.SparseBooleanArray;
+import android.view.InputDevice;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
@@ -21,6 +23,7 @@ import androidx.preference.PreferenceManager;
 import com.winlator.cmod.R;
 import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.Callback;
+import com.winlator.cmod.inputcontrols.ControllerManager;
 
 import java.util.ArrayList;
 
@@ -28,8 +31,17 @@ public class ContentDialog extends Dialog {
     public Runnable onConfirmCallback;
     private Runnable onCancelCallback;
     private final View contentView;
+    private OnControllerInputListener onControllerInputListener;
 
     private boolean isDarkMode;
+
+    public interface OnControllerInputListener {
+        void onControllerInput(InputDevice device);
+    }
+
+    public void setOnControllerInputListener(OnControllerInputListener listener) {
+        this.onControllerInputListener = listener;
+    }
 
     public ContentDialog(@NonNull Context context) {
         this(context, 0);
@@ -43,7 +55,7 @@ public class ContentDialog extends Dialog {
 
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        isDarkMode = sharedPreferences.getBoolean("dark_mode", false);
+        isDarkMode = sharedPreferences.getBoolean("dark_mode", true);
 
 //        contentView.setBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark: R.drawable.content_dialog_background);
 
@@ -181,7 +193,7 @@ public class ContentDialog extends Dialog {
         final EditText editText = dialog.findViewById(R.id.EditText);
 
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context);
-        boolean isDarkMode = sharedPreferences.getBoolean("dark_mode", false);
+        boolean isDarkMode = sharedPreferences.getBoolean("dark_mode", true);
         applyDarkThemeToEditText(editText, isDarkMode);
 
         editText.setHint(R.string.untitled);
@@ -247,5 +259,17 @@ public class ContentDialog extends Dialog {
 
         dialog.setTitle(titleResId);
         dialog.show();
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(@NonNull KeyEvent event) {
+        if (onControllerInputListener != null && event.getAction() == KeyEvent.ACTION_DOWN) {
+            InputDevice device = event.getDevice();
+            if (device != null && !device.isVirtual() && ControllerManager.isGameController(device)) {
+                onControllerInputListener.onControllerInput(device);
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 }

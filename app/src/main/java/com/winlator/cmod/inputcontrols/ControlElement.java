@@ -2,10 +2,13 @@ package com.winlator.cmod.inputcontrols;
 
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.PointF;
 import android.graphics.Rect;
+import android.graphics.RectF;
 
 import androidx.core.graphics.ColorUtils;
 
@@ -29,7 +32,7 @@ public class ControlElement {
     public static final byte TRACKPAD_ACCELERATION_THRESHOLD = 4;
     public static final short BUTTON_MIN_TIME_TO_KEEP_PRESSED = 300;
     public enum Type {
-        BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD;
+        BUTTON, D_PAD, RANGE_BUTTON, STICK, TRACKPAD, SWIPE_PAD, RADIAL_MENU;
 
         public static String[] names() {
             Type[] types = values();
@@ -78,12 +81,24 @@ public class ControlElement {
     private boolean boundingBoxNeedsUpdate = true;
     private String text = "";
     private byte iconId;
+    private String customIconPath = "";
+    private transient Bitmap customIconBitmap;
     private Range range;
     private byte orientation;
     private PointF currentPosition;
     private RangeScroller scroller;
     private CubicBezierInterpolator interpolator;
     private Object touchTime;
+    // SWIPE_PAD: [0]=center, [1]=up, [2]=right, [3]=down, [4]=left
+    private String[] swipePadTexts = {"", "", "", "", ""};
+    private long swipePadTouchStartTime = -1;
+    private float swipePadStartX, swipePadStartY;
+    // alpha for direction indicators: 0=hidden, 255=fully visible
+    private int swipePadAlpha = 0;
+    private static final long SWIPE_PAD_SHOW_DELAY_MS = 200;
+    // RADIAL_MENU
+    private boolean visible = false;
+    private Path[] paths;
 
     public ControlElement(InputControlsView inputControlsView) {
         this.inputControlsView = inputControlsView;
@@ -108,10 +123,25 @@ public class ControlElement {
         else if (type == Type.RANGE_BUTTON) {
             scroller = new RangeScroller(inputControlsView, this);
         }
+        else if (type == Type.SWIPE_PAD) {
+            // bindings[0]=up, [1]=right, [2]=down, [3]=left (center tap = none)
+            bindings[0] = Binding.KEY_1;
+            bindings[1] = Binding.KEY_2;
+            bindings[2] = Binding.KEY_3;
+            bindings[3] = Binding.KEY_4;
+            swipePadTexts = new String[]{"SWIPE", "1", "2", "3", "4"};
+        }
+        else if (type == Type.RADIAL_MENU) {
+            setBindingCount(3);
+        }
 
         text = "";
         iconId = 0;
+        customIconPath = "";
+        customIconBitmap = null;
         range = null;
+        visible = false;
+        paths = null;
         boundingBoxNeedsUpdate = true;
     }
 
@@ -129,9 +159,12 @@ public class ControlElement {
     }
 
     public void setBindingCount(int bindingCount) {
-        bindings = new Binding[bindingCount];
-        setBinding(Binding.NONE);
-        states = new boolean[bindingCount];
+        int oldBindingCount = bindings.length;
+        bindings = Arrays.copyOf(bindings, bindingCount);
+        if (bindingCount > oldBindingCount) {
+            Arrays.fill(bindings, oldBindingCount, bindingCount, Binding.NONE);
+        }
+        states = Arrays.copyOf(states, bindingCount);
         boundingBoxNeedsUpdate = true;
     }
 
@@ -177,8 +210,8 @@ public class ControlElement {
         if (index >= bindings.length) {
             int oldLength = bindings.length;
             bindings = Arrays.copyOf(bindings, index+1);
-            Arrays.fill(bindings, oldLength-1, bindings.length, Binding.NONE);
-            states = new boolean[bindings.length];
+            Arrays.fill(bindings, oldLength, bindings.length, Binding.NONE);
+            states = Arrays.copyOf(states, bindings.length);
             boundingBoxNeedsUpdate = true;
         }
         bindings[index] = binding;
@@ -220,6 +253,7 @@ public class ControlElement {
     }
 
     public void setSelected(boolean selected) {
+        if (type == Type.RADIAL_MENU) visible = selected;
         this.selected = selected;
     }
 
@@ -237,6 +271,15 @@ public class ControlElement {
 
     public void setIconId(int iconId) {
         this.iconId = (byte)iconId;
+    }
+
+    public String getCustomIconPath() {
+        return customIconPath;
+    }
+
+    public void setCustomIconPath(String customIconPath) {
+        this.customIconPath = customIconPath != null ? customIconPath : "";
+        this.customIconBitmap = null;
     }
 
     public Rect getBoundingBox() {
@@ -290,13 +333,35 @@ public class ControlElement {
                 }
                 break;
             }
+            case SWIPE_PAD: {
+                halfWidth = (int)(snappingSize * 3.5f);
+                halfHeight = (int)(snappingSize * 3.5f);
+                break;
+            }
+            case RADIAL_MENU:
+                halfWidth = snappingSize * 3;
+                halfHeight = snappingSize * 3;
+                break;
         }
 
         halfWidth *= scale;
         halfHeight *= scale;
         boundingBox.set(x - halfWidth, y - halfHeight, x + halfWidth, y + halfHeight);
         boundingBoxNeedsUpdate = false;
+        paths = null;
         return boundingBox;
+    }
+
+    private String getBindingTextAt(int index) {
+        Binding binding = getBindingAt(index);
+        String text = binding.toString().replace("NUMPAD ", "NP").replace("BUTTON ", "");
+        if (text.length() > 7) {
+            String[] parts = text.split(" ");
+            StringBuilder sb = new StringBuilder();
+            for (String part : parts) sb.append(part.charAt(0));
+            return (binding.isMouse() ? "M" : "")+sb;
+        }
+        else return text;
     }
 
 
@@ -408,7 +473,10 @@ public class ControlElement {
                 }
 
 
-                if (iconId > 0) {
+                if (!customIconPath.isEmpty()) {
+                    drawCustomIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height());
+                }
+                else if (iconId > 0) {
                     drawIcon(canvas, cx, cy, boundingBox.width(), boundingBox.height(), iconId);
                 }
                 else {
@@ -643,20 +711,214 @@ public class ControlElement {
                 canvas.drawRoundRect(boundingBox.left + offset, boundingBox.top + offset, boundingBox.right - offset, boundingBox.bottom - offset, radius, radius, paint);
                 break;
             }
+            case SWIPE_PAD: {
+                drawSwipePad(canvas, paint, primaryColor, strokeWidth, boundingBox, snappingSize);
+                break;
+            }
+            case RADIAL_MENU: {
+                float startAngle = 0;
+                float cx = boundingBox.centerX();
+                float cy = boundingBox.centerY();
+                float innerRadius = boundingBox.width() * 0.5f + snappingSize * 0.5f;
+                float outerRadius = boundingBox.width() + snappingSize * scale;
+                float radius = boundingBox.width() * 0.5f;
+                int oldColor = paint.getColor();
+
+                if (paths == null) {
+                    Path path0 = new Path();
+                    Path path1 = new Path();
+                    RectF outerOval = new RectF(cx - outerRadius, cy - outerRadius, cx + outerRadius, cy + outerRadius);
+                    RectF innerOval = new RectF(cx - innerRadius, cy - innerRadius, cx + innerRadius, cy + innerRadius);
+                    float outerMargin = (float)Math.toRadians(2);
+                    float innerMargin = outerMargin * (outerRadius / innerRadius);
+
+                    for (int i = 0; i <= bindings.length; i++) {
+                        float t = (float)i / bindings.length;
+                        float endAngle = (float)(t * Math.PI * 2 + Math.PI * 1.5f);
+
+                        if (i > 0) {
+                            path0.moveTo((float)(cx + Math.cos(startAngle + innerMargin) * innerRadius), (float)(cy + Math.sin(startAngle + innerMargin) * innerRadius));
+                            path0.lineTo((float)(cx + Math.cos(startAngle + outerMargin) * outerRadius), (float)(cy + Math.sin(startAngle + outerMargin) * outerRadius));
+                            path0.arcTo(outerOval, (float)Math.toDegrees(startAngle + outerMargin), (float)Math.toDegrees(endAngle - startAngle - outerMargin * 2));
+                            path0.lineTo((float)(cx + Math.cos(endAngle - innerMargin) * innerRadius), (float)(cy + Math.sin(endAngle - innerMargin) * innerRadius));
+                            path0.arcTo(innerOval, (float)Math.toDegrees(endAngle - innerMargin), (float)-Math.toDegrees(endAngle - startAngle - innerMargin * 2));
+
+                            float middleAngle = (startAngle + endAngle) * 0.5f;
+                            float endX = (float)(cx + Math.cos(middleAngle) * radius * 0.5f);
+                            float endY = (float)(cy + Math.sin(middleAngle) * radius * 0.5f);
+                            path1.moveTo(cx, cy);
+                            path1.lineTo(endX, endY);
+                            path1.addCircle(endX, endY, snappingSize * 0.4f, Path.Direction.CW);
+                        }
+
+                        startAngle = endAngle;
+                    }
+
+                    paths = new Path[]{path0, path1};
+                }
+
+                if (visible) {
+                    float minTextSize = snappingSize * 2 * scale;
+                    int darkColor = getDarkColor();
+                    paint.setStrokeCap(Paint.Cap.SQUARE);
+                    canvas.drawPath(paths[0], paint);
+                    paint.setStrokeCap(Paint.Cap.BUTT);
+
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setTextAlign(Paint.Align.CENTER);
+                    float touchAreaRadius = (outerRadius - innerRadius) * 0.5f * 1.25f;
+
+                    for (int i = 0, j = 0; i <= bindings.length; i++) {
+                        float t = (float)i / bindings.length;
+                        float endAngle = (float)(t * Math.PI * 2 + Math.PI * 1.5f);
+
+                        if (i > 0) {
+                            float middleAngle = (startAngle + endAngle) * 0.5f;
+                            float touchAreaCenter = (innerRadius + outerRadius) * 0.5f;
+                            float touchAreaX = (short)(cx + Math.cos(middleAngle) * touchAreaCenter);
+                            float touchAreaY = (short)(cy + Math.sin(middleAngle) * touchAreaCenter);
+
+                            canvas.save();
+                            canvas.translate(touchAreaX, touchAreaY);
+                            float textAngle = (float)Math.toDegrees(middleAngle + Math.PI * 0.5f) % 360;
+                            if (textAngle > 90 && textAngle <= 270) textAngle += 180;
+                            canvas.rotate(textAngle);
+                            String text = getBindingTextAt(j++);
+                            paint.setTextSize(Math.min(getTextSizeForWidth(paint, text, touchAreaRadius * 2), minTextSize));
+                            paint.setColor(Color.WHITE);
+                            canvas.drawText(text, 0, -((paint.descent() + paint.ascent()) * 0.5f), paint);
+                            canvas.restore();
+                        }
+
+                        startAngle = endAngle;
+                    }
+
+                    drawIcon(canvas, cx, cy, boundingBox.width() * 0.4f, boundingBox.width() * 0.4f, 32, false);
+                }
+                else {
+                    paint.setStyle(Paint.Style.FILL_AND_STROKE);
+                    paint.setColor(oldColor);
+                    canvas.drawPath(paths[1], paint);
+                }
+
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setColor(oldColor);
+                canvas.drawCircle(cx, cy, radius, paint);
+                break;
+            }
         }
     }
 
     private void drawIcon(Canvas canvas, float cx, float cy, float width, float height, int iconId) {
+        drawIcon(canvas, cx, cy, width, height, iconId, true);
+    }
+
+    private void drawIcon(Canvas canvas, float cx, float cy, float width, float height, int iconId, boolean automargin) {
         Paint paint = inputControlsView.getPaint();
         Bitmap icon = inputControlsView.getIcon((byte)iconId);
-        paint.setColorFilter(inputControlsView.getColorFilter());
-        int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale);
+        if (icon == null) return;
+        if (inputControlsView.shouldTintIcon((byte)iconId)) {
+            paint.setColorFilter(inputControlsView.getColorFilter());
+        }
+        int margin = automargin ? (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale) : 0;
         int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);
 
         Rect srcRect = new Rect(0, 0, icon.getWidth(), icon.getHeight());
         Rect dstRect = new Rect((int)(cx - halfSize), (int)(cy - halfSize), (int)(cx + halfSize), (int)(cy + halfSize));
         canvas.drawBitmap(icon, srcRect, dstRect, paint);
         paint.setColorFilter(null);
+    }
+
+    private void drawCustomIcon(Canvas canvas, float cx, float cy, float width, float height) {
+        if (customIconBitmap == null && customIconPath != null && !customIconPath.isEmpty()) {
+            customIconBitmap = BitmapFactory.decodeFile(customIconPath);
+        }
+        if (customIconBitmap == null) return;
+
+        Paint paint = inputControlsView.getPaint();
+        int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale);
+        int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);
+        Rect srcRect = new Rect(0, 0, customIconBitmap.getWidth(), customIconBitmap.getHeight());
+        Rect dstRect = new Rect((int)(cx - halfSize), (int)(cy - halfSize), (int)(cx + halfSize), (int)(cy + halfSize));
+        canvas.drawBitmap(customIconBitmap, srcRect, dstRect, paint);
+    }
+
+    private void drawSwipePad(Canvas canvas, Paint paint, int primaryColor, float strokeWidth, Rect bb, int snappingSize) {
+        float cx = bb.centerX();
+        float cy = bb.centerY();
+        float half = bb.width() * 0.5f;      // half-size of center square
+        float gap = strokeWidth * 2f;         // gap between center and direction squares
+        float dirSize = half * 0.75f;         // size of direction squares
+        float cornerR = snappingSize * 0.5f * scale;
+        float alpha255 = swipePadAlpha;       // 0..255
+
+        // ── Direction squares (drawn only when alpha > 0) ─────────────────────
+        if (alpha255 > 0) {
+            int fillColor = ColorUtils.setAlphaComponent(0xFF00BFFF, (int)(alpha255 * 0.3f));
+            int strokeColor = ColorUtils.setAlphaComponent(primaryColor, (int)alpha255);
+
+            // Direction rects: Up, Right, Down, Left
+            float[][] dirs = {
+                {cx - dirSize, cy - half - gap - dirSize * 2, cx + dirSize, cy - half - gap},
+                {cx + half + gap, cy - dirSize, cx + half + gap + dirSize * 2, cy + dirSize},
+                {cx - dirSize, cy + half + gap, cx + dirSize, cy + half + gap + dirSize * 2},
+                {cx - half - gap - dirSize * 2, cy - dirSize, cx - half - gap, cy + dirSize}
+            };
+            boolean[] pressed = {states[0], states[1], states[2], states[3]};
+            String[] dTexts = {
+                swipePadTexts != null && swipePadTexts.length > 1 ? swipePadTexts[1] : "",
+                swipePadTexts != null && swipePadTexts.length > 2 ? swipePadTexts[2] : "",
+                swipePadTexts != null && swipePadTexts.length > 3 ? swipePadTexts[3] : "",
+                swipePadTexts != null && swipePadTexts.length > 4 ? swipePadTexts[4] : ""
+            };
+
+            for (int i = 0; i < 4; i++) {
+                float l = dirs[i][0], t = dirs[i][1], r = dirs[i][2], b = dirs[i][3];
+                // fill
+                paint.setStyle(Paint.Style.FILL);
+                paint.setColor(pressed[i] ? ColorUtils.setAlphaComponent(0xFF00BFFF, (int)(alpha255 * 0.5f)) : fillColor);
+                canvas.drawRoundRect(l, t, r, b, cornerR, cornerR, paint);
+                // stroke
+                paint.setStyle(Paint.Style.STROKE);
+                paint.setStrokeWidth(strokeWidth);
+                paint.setColor(strokeColor);
+                canvas.drawRoundRect(l, t, r, b, cornerR, cornerR, paint);
+                // text
+                if (dTexts[i] != null && !dTexts[i].isEmpty()) {
+                    paint.setStyle(Paint.Style.FILL);
+                    paint.setColor(ColorUtils.setAlphaComponent(primaryColor, (int)alpha255));
+                    float tw = r - l;
+                    float th = b - t;
+                    paint.setTextSize(Math.min(getTextSizeForWidth(paint, dTexts[i], tw - strokeWidth * 2), snappingSize * 1.5f * scale));
+                    paint.setTextAlign(Paint.Align.CENTER);
+                    canvas.drawText(dTexts[i], l + tw / 2f, t + th / 2f - (paint.descent() + paint.ascent()) * 0.5f, paint);
+                }
+            }
+        }
+
+        // ── Center square (always visible) ────────────────────────────────────
+        float r = cornerR * 1.5f;
+        // pressed fill
+        if (states[0] || states[1] || states[2] || states[3]) {
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(ColorUtils.setAlphaComponent(0xFF00BFFF, 77));
+            canvas.drawRoundRect(cx - half, cy - half, cx + half, cy + half, r, r, paint);
+        }
+        paint.setStyle(Paint.Style.STROKE);
+        paint.setStrokeWidth(strokeWidth);
+        paint.setColor(selected ? inputControlsView.getSecondaryColor() : primaryColor);
+        canvas.drawRoundRect(cx - half, cy - half, cx + half, cy + half, r, r, paint);
+
+        // center text
+        String centerText = (swipePadTexts != null && swipePadTexts.length > 0 && !swipePadTexts[0].isEmpty())
+                ? swipePadTexts[0] : (text != null && !text.isEmpty() ? text : "");
+        if (!centerText.isEmpty()) {
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(primaryColor);
+            paint.setTextSize(Math.min(getTextSizeForWidth(paint, centerText, half * 2 - strokeWidth * 2), snappingSize * 2 * scale));
+            paint.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText(centerText, cx, cy - (paint.descent() + paint.ascent()) * 0.5f, paint);
+        }
     }
 
     public JSONObject toJSONObject() {
@@ -675,10 +937,18 @@ public class ControlElement {
             elementJSONObject.put("toggleSwitch", toggleSwitch);
             elementJSONObject.put("text", text);
             elementJSONObject.put("iconId", iconId);
+            if (customIconPath != null && !customIconPath.isEmpty()) {
+                elementJSONObject.put("customIconPath", customIconPath);
+            }
 
             if (type == Type.RANGE_BUTTON && range != null) {
                 elementJSONObject.put("range", range.name());
                 if (orientation != 0) elementJSONObject.put("orientation", orientation);
+            }
+            if (type == Type.SWIPE_PAD && swipePadTexts != null) {
+                JSONArray textsArray = new JSONArray();
+                for (String t : swipePadTexts) textsArray.put(t != null ? t : "");
+                elementJSONObject.put("swipePadTexts", textsArray);
             }
             return elementJSONObject;
         }
@@ -688,7 +958,25 @@ public class ControlElement {
     }
 
     public boolean containsPoint(float x, float y) {
-        return getBoundingBox().contains((int)(x + 0.5f), (int)(y + 0.5f));
+        if (type == Type.RADIAL_MENU && visible) {
+            float outerRadius = boundingBox.width() + inputControlsView.getSnappingSize() * scale;
+            return distance(boundingBox.centerX(), boundingBox.centerY(), x, y) < outerRadius;
+        }
+        else return getBoundingBox().contains((int)(x + 0.5f), (int)(y + 0.5f));
+    }
+
+    public String[] getSwipePadTexts() {
+        if (swipePadTexts == null) swipePadTexts = new String[]{"","","","",""};
+        return swipePadTexts;
+    }
+
+    public void setSwipePadTexts(String[] texts) {
+        if (texts != null && texts.length == 5) swipePadTexts = texts;
+    }
+
+    public void setSwipePadText(int index, String text) {
+        if (swipePadTexts == null) swipePadTexts = new String[]{"","","","",""};
+        if (index >= 0 && index < 5) swipePadTexts[index] = text != null ? text : "";
     }
 
     private boolean isKeepButtonPressedAfterMinTime() {
@@ -709,6 +997,30 @@ public class ControlElement {
             }
             else if (type == Type.RANGE_BUTTON) {
                 scroller.handleTouchDown(x, y);
+                return true;
+            }
+            else if (type == Type.SWIPE_PAD) {
+                swipePadTouchStartTime = System.currentTimeMillis();
+                swipePadStartX = x;
+                swipePadStartY = y;
+                swipePadAlpha = 0;
+                // Post delayed show of direction indicators
+                inputControlsView.postDelayed(() -> {
+                    if (swipePadTouchStartTime >= 0) {
+                        swipePadAlpha = 255;
+                        inputControlsView.invalidate();
+                    }
+                }, SWIPE_PAD_SHOW_DELAY_MS);
+                return true;
+            }
+            else if (type == Type.RADIAL_MENU) {
+                if (visible) {
+                    if (distance(boundingBox.centerX(), boundingBox.centerY(), x, y) < (boundingBox.width() * 0.5f)) {
+                        visible = false;
+                    }
+                }
+                else visible = true;
+                inputControlsView.invalidate();
                 return true;
             }
             else {
@@ -828,10 +1140,38 @@ public class ControlElement {
             scroller.handleTouchMove(x, y);
             return true;
         }
+        else if (pointerId == currentPointerId && type == Type.SWIPE_PAD) {
+            float dx = x - swipePadStartX;
+            float dy = y - swipePadStartY;
+            float threshold = getBoundingBox().width() * 0.25f;
+            // Determine active direction
+            boolean[] newStates = new boolean[4];
+            if (Math.abs(dx) > threshold || Math.abs(dy) > threshold) {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    newStates[dx > 0 ? 1 : 3] = true; // right / left
+                } else {
+                    newStates[dy > 0 ? 2 : 0] = true; // down / up
+                }
+            }
+            for (byte i = 0; i < 4; i++) {
+                if (newStates[i] != states[i]) {
+                    states[i] = newStates[i];
+                    // only fire if indicator is visible (slow swipe) or immediately (fast)
+                    if (newStates[i]) inputControlsView.handleInputEvent(getBindingAt(i), true);
+                    else inputControlsView.handleInputEvent(getBindingAt(i), false);
+                }
+            }
+            inputControlsView.invalidate();
+            return true;
+        }
         else return false;
     }
 
     public boolean handleTouchUp(int pointerId) {
+        return handleTouchUp(pointerId, 0, 0);
+    }
+
+    public boolean handleTouchUp(int pointerId, float x, float y) {
         if (pointerId == currentPointerId) {
             if (type == Type.BUTTON) {
                 Binding binding = getBindingAt(0);
@@ -849,6 +1189,23 @@ public class ControlElement {
                     selected = !selected;
                     inputControlsView.invalidate();
                 }
+            }
+            else if (type == Type.SWIPE_PAD) {
+                long elapsed = System.currentTimeMillis() - swipePadTouchStartTime;
+                // Release all active directions
+                for (byte i = 0; i < 4; i++) {
+                    if (states[i]) {
+                        inputControlsView.handleInputEvent(getBindingAt(i), false);
+                        states[i] = false;
+                    }
+                }
+                swipePadTouchStartTime = -1;
+                swipePadAlpha = 0;
+                inputControlsView.invalidate();
+            }
+            else if (type == Type.RADIAL_MENU) {
+                if (visible) handleRadialMenuClick(x, y);
+                inputControlsView.invalidate();
             }
             else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
                 for (byte i = 0; i < states.length; i++) {
@@ -869,6 +1226,62 @@ public class ControlElement {
             return true;
         }
         return false;
+    }
+
+    private void handleRadialMenuClick(float x, float y) {
+        int snappingSize = inputControlsView.getSnappingSize();
+        float cx = boundingBox.centerX();
+        float cy = boundingBox.centerY();
+        float innerRadius = boundingBox.width() * 0.5f + snappingSize * 0.5f;
+        float outerRadius = boundingBox.width() + snappingSize * scale;
+        float startAngle = 0;
+        Binding clickedBinding = Binding.NONE;
+
+        for (int i = 0, j = 0; i <= bindings.length; i++) {
+            float t = (float)i / bindings.length;
+            float endAngle = (float)(t * Math.PI * 2 + Math.PI * 1.5f);
+
+            if (i > 0) {
+                float middleAngle = (startAngle + endAngle) * 0.5f;
+                float touchAreaCenter = (innerRadius + outerRadius) * 0.5f;
+                float touchAreaX = (short)(cx + Math.cos(middleAngle) * touchAreaCenter);
+                float touchAreaY = (short)(cy + Math.sin(middleAngle) * touchAreaCenter);
+
+                float lineAx = (float)(cx + Math.cos(startAngle) * touchAreaCenter);
+                float lineAy = (float)(cy + Math.sin(startAngle) * touchAreaCenter);
+                float lineBx = (float)(cx + Math.cos(endAngle) * touchAreaCenter);
+                float lineBy = (float)(cy + Math.sin(endAngle) * touchAreaCenter);
+
+                if (distance(touchAreaX, touchAreaY, x, y) <= distance(lineAx, lineAy, lineBx, lineBy) * 0.5f &&
+                    distance(cx, cy, x, y) > innerRadius &&
+                    distance(cx, cy, x, y) <= outerRadius) {
+                    clickedBinding = bindings[j];
+                    break;
+                }
+                j++;
+            }
+
+            startAngle = endAngle;
+        }
+
+        if (clickedBinding != Binding.NONE) {
+            visible = false;
+            final Binding finalBinding = clickedBinding;
+            inputControlsView.handleInputEvent(finalBinding, true);
+            inputControlsView.postDelayed(() -> inputControlsView.handleInputEvent(finalBinding, false), 30);
+        }
+    }
+
+    private static float distance(float x1, float y1, float x2, float y2) {
+        float dx = x2 - x1;
+        float dy = y2 - y1;
+        return (float)Math.sqrt(dx * dx + dy * dy);
+    }
+
+    private int getDarkColor() {
+        float overlayOpacity = inputControlsView.getOverlayOpacity();
+        float opacity = inputControlsView.isEditMode() ? Math.max(0.15f, overlayOpacity) : overlayOpacity;
+        return Color.argb((int)(opacity * 255), 0, 0, 0);
     }
 
     public PointF getCurrentPosition() {
