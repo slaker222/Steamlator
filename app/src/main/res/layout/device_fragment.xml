@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/window_background_color"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <!-- CPU Card -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp">
+            <LinearLayout
+                style="@style/FieldSet"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/device_processor"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/TVCpuName"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:text="—"
+                        android:gravity="end" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp"
+                    android:background="#22888888" android:layout_marginVertical="2dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/device_cpu_cores"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/TVCpuCores"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:text="—"
+                        android:gravity="end" />
+                </LinearLayout>
+
+            </LinearLayout>
+            <TextView
+                style="@style/FieldSetLabel"
+                android:text="@string/device_processor" />
+        </FrameLayout>
+
+        <!-- GPU Card -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp">
+            <LinearLayout
+                style="@style/FieldSet"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/device_gpu"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/TVGpuRenderer"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:text="—"
+                        android:gravity="end" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp"
+                    android:background="#22888888" android:layout_marginVertical="2dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/device_gpu_vendor"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/TVGpuVendor"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:text="—"
+                        android:gravity="end" />
+                </LinearLayout>
+
+            </LinearLayout>
+            <TextView
+                style="@style/FieldSetLabel"
+                android:text="@string/device_gpu" />
+        </FrameLayout>
+
+        <!-- RAM Card -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp">
+            <LinearLayout
+                style="@style/FieldSet"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/device_ram_total"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/TVRamTotal"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:text="—"
+                        android:gravity="end" />
+                </LinearLayout>
+
+                <View android:layout_width="match_parent" android:layout_height="1dp"
+                    android:background="#22888888" android:layout_marginVertical="2dp"/>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp">
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/device_ram_available"
+                        android:textStyle="bold" />
+                    <TextView
+                        android:id="@+id/TVRamAvail"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.5"
+                        android:text="—"
+                        android:gravity="end" />
+                </LinearLayout>
+
+            </LinearLayout>
+            <TextView
+                style="@style/FieldSetLabel"
+                android:text="@string/device_ram" />
+        </FrameLayout>
+
+        <!-- Vulkan Card -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp">
+            <LinearLayout
+                android:id="@+id/LLVulkanInfo"
+                style="@style/FieldSet"
+                android:orientation="vertical">
+                <!-- filled dynamically -->
+            </LinearLayout>
+            <TextView
+                style="@style/FieldSetLabel"
+                android:text="@string/device_vulkan" />
+        </FrameLayout>
+
+        <!-- OpenGL Card -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp">
+            <LinearLayout
+                android:id="@+id/LLOpenGLInfo"
+                style="@style/FieldSet"
+                android:orientation="vertical">
+                <!-- filled dynamically -->
+            </LinearLayout>
+            <TextView
+                style="@style/FieldSetLabel"
+                android:text="@string/device_opengl" />
+        </FrameLayout>
+
+    </LinearLayout>
+</ScrollView>
