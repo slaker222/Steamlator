@@ -16,7 +16,7 @@
         android:paddingLeft="32dp"
         android:paddingRight="32dp"
         android:layout_gravity="center"
-        android:gravity="right"
+        android:gravity="center_horizontal"
         android:background="@drawable/preloader_background">
 
         <LinearLayout
@@ -50,11 +50,58 @@
 
             <TextView
                 android:id="@+id/TextView"
-                android:layout_width="wrap_content"
+                android:layout_width="220dp"
                 android:layout_height="wrap_content"
                 android:textSize="20dp"
                 android:textColor="@color/colorPrimaryDark"
+                android:maxLines="2"
+                android:ellipsize="end"
                 android:text="@string/downloading_file" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/TVStatus"
+            android:layout_width="220dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="13sp"
+            android:textColor="@color/colorPrimaryDark"
+            android:text="@string/preparing_installation"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:alpha="0.85" />
+
+        <LinearLayout
+            android:id="@+id/LLMini2048"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/install_mini_game_title"
+                android:textColor="@color/colorPrimaryDark"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="@string/install_mini_game_subtitle"
+                android:textColor="@color/colorPrimaryDark"
+                android:textSize="11sp"
+                android:alpha="0.85" />
+
+            <com.winlator.cmod.widget.InstallMini2048View
+                android:id="@+id/Mini2048"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp" />
         </LinearLayout>
 
         <LinearLayout
