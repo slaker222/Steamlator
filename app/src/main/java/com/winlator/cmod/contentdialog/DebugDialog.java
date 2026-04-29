@@ -1,10 +1,13 @@
 package com.winlator.cmod.contentdialog;
 
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 
@@ -41,6 +44,13 @@ public class DebugDialog extends ContentDialog implements Callback<String> {
         toolbarView.findViewById(R.id.BTPause).setOnClickListener((v) -> {
             setPaused(!paused);
             ((ImageButton)v).setImageResource(getPaused() ? R.drawable.icon_play : R.drawable.icon_pause);
+        });
+        toolbarView.findViewById(R.id.BTCopy).setOnClickListener((v) -> {
+            String logText = logView.getText();
+            ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+            ClipData clip = ClipData.newPlainText("log", logText);
+            clipboard.setPrimaryClip(clip);
+            Toast.makeText(context, R.string.copied_to_clipboard, Toast.LENGTH_SHORT).show();
         });
         llBottomBarPanel.addView(toolbarView);
         try {

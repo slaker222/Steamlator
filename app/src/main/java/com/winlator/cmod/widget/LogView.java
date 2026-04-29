@@ -173,6 +173,17 @@ public class LogView extends View {
         postInvalidate();
     }
 
+    public String getText() {
+        synchronized (lock) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0, count = lines.size(); i < count; i++) {
+                sb.append(lines.get(i));
+                if (i < count - 1) sb.append("\n");
+            }
+            return sb.toString();
+        }
+    }
+
     public void append(String line) {
         synchronized (lock) {
             lines.add("["+DateFormat.format("HH:mm:ss", System.currentTimeMillis())+"]  "+line.replace("\n", ""));

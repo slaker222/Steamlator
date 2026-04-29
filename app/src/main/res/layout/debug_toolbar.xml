@@ -16,4 +16,10 @@
         android:src="@drawable/icon_pause"
         android:layout_marginRight="8dp" />
 
+    <ImageButton
+        style="@style/ListMenuButton"
+        android:id="@+id/BTCopy"
+        android:src="@drawable/icon_copy"
+        android:layout_marginRight="8dp" />
+
 </LinearLayout>
